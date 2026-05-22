@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 03 · Associations & Compositions — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html" class="active"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 03</span>
+      <span>Associations & Compositions</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">03</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 03 · Associations & Compositions</div>
+        <h1 class="chapter-title">Associations & <em>Compositions</em></h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Il cuore del modello dati relazionale in CDS. Capire profondamente la differenza tra Association e Composition è il singolo skill più importante per modellare correttamente in CAP — più di qualsiasi conoscenza di sintassi.</p>
+    
+
+    <h2 id="differenza" data-num="03.1">Association vs Composition</h2>
+    
+    <p>Questo capitolo affronta una delle distinzioni più importanti — e più fraintese — di CDS. La differenza tra <strong>Association</strong> e <strong>Composition</strong> non è sintattica, è semantica, e cambia profondamente il comportamento runtime di CAP.</p>
+    
+    <p>In una frase: <strong>una Composition è una relazione padre-figlio in cui i figli non hanno vita propria</strong>. Una Association è invece un <strong>puntatore a un'entità indipendente</strong>.</p>
+    
+    <table>
+      <thead>
+        <tr><th>Aspetto</th><th>Association</th><th>Composition</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Vita del target</td><td>Indipendente</td><td>Vincolata al padre</td></tr>
+        <tr><td>Cancellazione padre</td><td>Target sopravvive</td><td>Target eliminato (cascade)</td></tr>
+        <tr><td>Esempio</td><td>Book → Author</td><td>Order → OrderItems</td></tr>
+        <tr><td>Deep insert in API</td><td>Solo per draft</td><td>Sì, di default</td></tr>
+        <tr><td>Draft con <code>@odata.draft.enabled</code></td><td>Non incluso nel draft</td><td>Incluso nel draft</td></tr>
+        <tr><td>Esposizione separata</td><td>Sì, entity propria</td><td>Solitamente no</td></tr>
+      </tbody>
+    </table>
+    
+    <div class="callout callout-tip">
+  <div class="callout-label">La domanda da farsi</div>
+  <p>Se il record figlio esiste anche senza il padre, è <strong>Association</strong>. Se non ha senso da solo (un "OrderItem" senza ordine, una "Review" senza il prodotto recensito), è <strong>Composition</strong>.</p>
+</div>
+    
+    <h2 id="association-basics" data-num="03.2">Association <em>di base</em></h2>
+    
+    <h3 id="to-one">Association to one</h3>
+    
+    <p>La forma più comune: un libro punta a un autore.</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Authors</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  name   : <span class="type">String</span>;
+}}
+
+<span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>;
+  author : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Authors</span>;
+}}</code></pre>
+</div>
+    
+    <p>Cosa succede dietro le quinte? CAP aggiunge automaticamente alla tabella <code>Books</code> una colonna <code>author_ID</code> (foreign key verso <code>Authors.ID</code>). Nel JSON OData ricevi qualcosa come:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>GET /Books(abc-123)</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>{{
+  <span class="str">"ID"</span>: <span class="str">"abc-123"</span>,
+  <span class="str">"title"</span>: <span class="str">"Il nome della rosa"</span>,
+  <span class="str">"author_ID"</span>: <span class="str">"def-456"</span>
+}}</code></pre>
+</div>
+    
+    <p>E con <code>$expand=author</code>:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>GET /Books(abc-123)?$expand=author</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>{{
+  <span class="str">"ID"</span>: <span class="str">"abc-123"</span>,
+  <span class="str">"title"</span>: <span class="str">"Il nome della rosa"</span>,
+  <span class="str">"author"</span>: {{
+    <span class="str">"ID"</span>: <span class="str">"def-456"</span>,
+    <span class="str">"name"</span>: <span class="str">"Umberto Eco"</span>
+  }}
+}}</code></pre>
+</div>
+    
+    <h3 id="to-many">Association to many</h3>
+    
+    <p>Il lato opposto: un autore con molti libri. Qui c'è una sottigliezza importante.</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Authors</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  name   : <span class="type">String</span>;
+  books  : <span class="type">Association</span> <span class="kw">to many</span> <span class="type">Books</span> 
+             <span class="kw">on</span> books.author = $self;
+}}</code></pre>
+</div>
+    
+    <p><strong>Le <code>Association to many</code> non hanno una foreign key</strong> — non possono averla, dato che la relazione "uno-a-molti" sta sul lato "molti". CAP risolve l'associazione tramite la clausola <code>on</code>, che dice: "i libri di questo autore sono quelli in cui <code>books.author</code> punta a me (<code>$self</code>)".</p>
+    
+    <p>La variabile <code>$self</code> rappresenta "l'istanza corrente di Authors". È equivalente al <code>this</code> dei linguaggi a oggetti.</p>
+    
+    <h3 id="managed">Managed associations</h3>
+    
+    <p>Una <code>Association to one</code> senza <code>on</code> clause è detta <em>managed</em>: CAP gestisce automaticamente la foreign key. Sono le più comode e le più usate. Ne hai già visto un esempio sopra:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>author : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Authors</span>;
+<span class="cmt">// equivalente a: author : Association to Authors on author.ID = author_ID;</span>
+<span class="cmt">// CAP genera silenziosamente la colonna author_ID</span></code></pre>
+</div>
+    
+    <p>Se la chiave target è composta (più di un campo), CAP genera multiple FK columns con suffissi appropriati.</p>
+    
+    <h3 id="unmanaged">Unmanaged: ON clause</h3>
+    
+    <p>A volte serve modellare relazioni più complesse, dove la FK è una colonna esistente che non è la chiave standard:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID  : <span class="type">UUID</span>;
+  isbn    : <span class="type">String</span>(<span class="num">13</span>);
+  
+  <span class="cmt">// FK custom: collega tramite isbn invece di ID</span>
+  edizione : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Edizioni</span>  
+             <span class="kw">on</span> edizione.isbn = isbn;
+}}</code></pre>
+</div>
+    
+    <div class="callout callout-warn">
+  <div class="callout-label">Quando NON usare unmanaged</div>
+  <p>Le association unmanaged sono utili ma fragili. Se modifichi il nome del campo a sinistra o destra dell'<code>on</code>, devi aggiornare l'<code>on</code>. Preferisci sempre le managed quando puoi.</p>
+</div>
+    
+    <h2 id="composition" data-num="03.3">Composition</h2>
+    
+    <p>Sintatticamente quasi identica alle association, ma cambia il comportamento runtime.</p>
+    
+    <h3 id="comp-many">Composition di figli</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Orders</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  customer : <span class="type">String</span>;
+  
+  items : <span class="type">Composition</span> <span class="kw">of many</span> <span class="type">OrderItems</span> 
+            <span class="kw">on</span> items.order = $self;
+}}
+
+<span class="kw">entity</span> <span class="type">OrderItems</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  order    : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Orders</span>;
+  product  : <span class="type">String</span>;
+  quantity : <span class="type">Integer</span>;
+}}</code></pre>
+</div>
+    
+    <p>Tre comportamenti automatici scattano grazie alla parola <code>Composition</code>:</p>
+    
+    <ol>
+      <li><strong>Cascade delete</strong>: cancellare un Order elimina automaticamente i suoi OrderItems</li>
+      <li><strong>Deep insert nativo</strong>: puoi creare ordine + righe in una sola POST</li>
+      <li><strong>Draft inclusion</strong>: se Order ha <code>@odata.draft.enabled</code>, anche OrderItems entrano nello stesso draft</li>
+    </ol>
+    
+    <p>Esempio di deep insert in OData:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>JSON</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>POST /Orders
+{{
+  <span class="str">"customer"</span>: <span class="str">"Mario Rossi"</span>,
+  <span class="str">"items"</span>: [
+    {{ <span class="str">"product"</span>: <span class="str">"Libro A"</span>, <span class="str">"quantity"</span>: <span class="num">2</span> }},
+    {{ <span class="str">"product"</span>: <span class="str">"Libro B"</span>, <span class="str">"quantity"</span>: <span class="num">1</span> }}
+  ]
+}}</code></pre>
+</div>
+    
+    <p>CAP crea Order e i due OrderItems in una transazione atomica. Con una semplice <code>Association</code> questo non sarebbe possibile out-of-the-box.</p>
+    
+    <h3 id="backlink">Il backlink</h3>
+    
+    <p>Hai notato che <code>OrderItems</code> ha <code>order : Association to Orders</code>? Questo è il <strong>backlink</strong>: il "ritorno" dal figlio al padre. È un'<code>Association</code> normale (non Composition!), perché OrderItems punta al padre, non lo possiede.</p>
+    
+    <p>Da qualche versione di CAP, puoi usare una sintassi più concisa con <code>aspect</code> bidirezionale:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Orders</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  items : <span class="type">Composition</span> <span class="kw">of many</span> {{
+    <span class="kw">key</span> pos : <span class="type">Integer</span>;
+    product  : <span class="type">String</span>;
+    quantity : <span class="type">Integer</span>;
+  }};
+}}</code></pre>
+</div>
+    
+    <p>Qui CAP definisce automaticamente l'entity figlia inline, con chiave composta (Order's ID + pos). Pulito per child entity che non vengono esposte separatamente.</p>
+    
+    <h2 id="self" data-num="03.4">Self-references</h2>
+    
+    <p>Una entity può puntare a se stessa — utile per gerarchie (categorie con sotto-categorie, dipendenti con manager, ecc.):</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Categories</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  name     : <span class="type">String</span>;
+  
+  parent   : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Categories</span>;
+  children : <span class="type">Composition</span> <span class="kw">of many</span> <span class="type">Categories</span> 
+               <span class="kw">on</span> children.parent = $self;
+}}</code></pre>
+</div>
+    
+    <p>Nota un dettaglio: <code>parent</code> è un'<code>Association</code> (le categorie radice possono esistere senza parent), <code>children</code> è una <code>Composition</code> (se cancelli una categoria, le sue figlie spariscono — comportamento di solito desiderato per gerarchie).</p>
+    
+    <h2 id="many-to-many" data-num="03.5">Many-to-many</h2>
+    
+    <p>CDS non ha un costrutto nativo per N:M — devi modellare la tabella di link esplicitamente. Pattern standard:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>;
+  genres : <span class="type">Composition</span> <span class="kw">of many</span> <span class="type">Book2Genre</span> 
+             <span class="kw">on</span> genres.book = $self;
+}}
+
+<span class="kw">entity</span> <span class="type">Genres</span> {{
+  <span class="kw">key</span> code : <span class="type">String</span>(<span class="num">20</span>);
+  name     : <span class="type">String</span>;
+  books    : <span class="type">Association</span> <span class="kw">to many</span> <span class="type">Book2Genre</span> 
+               <span class="kw">on</span> books.genre = $self;
+}}
+
+<span class="kw">entity</span> <span class="type">Book2Genre</span> {{
+  <span class="kw">key</span> book  : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Books</span>;
+  <span class="kw">key</span> genre : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Genres</span>;
+}}</code></pre>
+</div>
+    
+    <p>Tre osservazioni: la link table <code>Book2Genre</code> ha chiave composta dai due lati; il lato <code>Books.genres</code> è una <code>Composition</code> (i link "appartengono" al libro); il lato <code>Genres.books</code> è una semplice <code>Association to many</code> (i generi esistono indipendentemente).</p>
+    
+    <p>Se hai bisogno di attributi sulla relazione (es. priorità del genere, da quando un libro è associato a un genere), aggiungi campi alla link table.</p>
+    
+    <h2 id="cascade" data-num="03.6">Cascade e <em>referential integrity</em></h2>
+    
+    <p>Per default CAP genera CHECK e foreign key constraints su HANA che impediscono associazioni orfane. Comportamento di default:</p>
+    
+    <table>
+      <thead>
+        <tr><th>Operazione</th><th>Association</th><th>Composition</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DELETE padre con figli esistenti</td><td>Errore FK violation</td><td>Cascade delete dei figli</td></tr>
+        <tr><td>UPDATE FK con target inesistente</td><td>Errore FK violation</td><td>Errore FK violation</td></tr>
+        <tr><td>INSERT figlio senza padre</td><td>Errore FK violation</td><td>Errore FK violation</td></tr>
+      </tbody>
+    </table>
+    
+    <p>Puoi disabilitare/personalizzare con annotation:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  
+  <span class="ann">@assert.integrity: false</span>  <span class="cmt">// nessun FK constraint generato</span>
+  author : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Authors</span>;
+}}</code></pre>
+</div>
+    
+    <div class="callout callout-danger">
+  <div class="callout-label">Sconsigliato in produzione</div>
+  <p>Disabilitare i constraint può sembrare comodo per evitare errori durante il dev, ma in produzione apre la porta a dati corrotti. Mantieni i constraint attivi e gestisci correttamente le cancellazioni a livello di business logic.</p>
+</div>
+    
+    <h2 id="anti-patterns" data-num="03.7">Anti-pattern da <em>evitare</em></h2>
+    
+    <p>Errori frequenti che vedo in code review di progetti CAP:</p>
+    
+    <p><strong>1. Usare Association quando serve Composition.</strong> Se vedi che ogni volta che cancelli un padre devi anche cancellare manualmente i figli con un handler <code>before DELETE</code>, hai sbagliato: doveva essere una Composition.</p>
+    
+    <p><strong>2. Usare Composition quando serve Association.</strong> Se hai dichiarato <code>Composition of many Reviews</code> ma poi vuoi esporre le Reviews come endpoint indipendente con il loro service, è meglio una Association.</p>
+    
+    <p><strong>3. Dimenticare il backlink.</strong> Una Composition <code>of many</code> richiede sempre un'Association di ritorno sul figlio. Senza, CAP non sa come collegare i record.</p>
+    
+    <p><strong>4. Composition annidate troppo profonde.</strong> Più di 3 livelli di Composition (es. Order → Items → SubItems → Variants) diventa difficile da gestire, soprattutto con i draft. Considera di "appiattire" con association.</p>
+    
+    <p><strong>5. Many-to-many senza link table esplicita.</strong> Non esiste sintassi tipo "Books.genres : Many to Genres". Devi sempre passare per una link entity.</p>
+    
+    <h2 id="esercizio" data-num="03.8">Esercizio del capitolo</h2>
+    
+    <p>Modella un sistema "Conference Management". Entity richieste:</p>
+    
+    <ul>
+      <li><strong>Conferences</strong>: ID, title, date, location, sessions (Composition of many Sessions)</li>
+      <li><strong>Sessions</strong>: ID, title, conference (backlink), speaker (Association to Speakers), attendees (many-to-many con Attendees, con un campo <code>registeredAt</code>)</li>
+      <li><strong>Speakers</strong>: ID, name, bio</li>
+      <li><strong>Attendees</strong>: ID, name, email</li>
+      <li><strong>Tracks</strong>: gerarchica con self-reference (track padre opzionale)</li>
+    </ul>
+    
+    <p>Verifica con <code>cds compile</code> che lo schema generato sia coerente. Poi prova un deep insert via OData per creare una Conference con due Sessions, ognuna con uno Speaker e due Attendees.</p>
+
+
+    <nav class="chapter-nav">
+  <a href="ch02-syntax.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">Sintassi, tipi, entity</span>
+  </a>
+  <a href="ch04-aspects.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">Aspects, mixins, riusabilità</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#differenza" >Association vs Composition</a></li>
+    <li><a href="#association-basics" >Association di base</a></li>
+    <li><a href="#to-one" style="padding-left: 1.5rem; font-size: 0.78rem;">Association to one</a></li>
+    <li><a href="#to-many" style="padding-left: 1.5rem; font-size: 0.78rem;">Association to many</a></li>
+    <li><a href="#managed" style="padding-left: 1.5rem; font-size: 0.78rem;">Managed associations</a></li>
+    <li><a href="#unmanaged" style="padding-left: 1.5rem; font-size: 0.78rem;">Unmanaged: ON clause</a></li>
+    <li><a href="#composition" >Composition</a></li>
+    <li><a href="#comp-many" style="padding-left: 1.5rem; font-size: 0.78rem;">Composition di figli</a></li>
+    <li><a href="#backlink" style="padding-left: 1.5rem; font-size: 0.78rem;">Il backlink</a></li>
+    <li><a href="#self" >Self-references</a></li>
+    <li><a href="#many-to-many" >Many-to-many</a></li>
+    <li><a href="#cascade" >Cascade e referential integrity</a></li>
+    <li><a href="#anti-patterns" >Anti-pattern da evitare</a></li>
+    <li><a href="#esercizio" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

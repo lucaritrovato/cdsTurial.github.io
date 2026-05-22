@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 08 · CQL & CQN — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html" class="active"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 08</span>
+      <span>CQL & CQN</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">08</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 08 · CQL & CQN</div>
+        <h1 class="chapter-title">CQL & CQN</h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead"><strong>CQL</strong> &egrave; il linguaggio di query di CAP. Sembra SQL ma porta a un livello superiore: <em>path expressions</em>, <em>expand</em>, <em>aggregazioni</em> dichiarative, <em>tagged templates</em> con sicurezza built-in. Padroneggiarlo significa scrivere database logic con un decimo del codice.</p>
+    
+
+    <section id="c-1">
+      <h2 data-num="8.1">CQL: SQL ridisegnato per il XXI secolo</h2>
+      <p>
+        <strong>CQL</strong> (Core Query Language) &egrave; il linguaggio di query di CAP. Sembra SQL,
+        ma non &egrave; SQL. &Egrave; una versione semplificata, regolarizzata, <em>orientata agli oggetti</em>:
+        tratta le association come prime classi, supporta path expressions ovunque, ha sintassi piu&grave;
+        moderne per le aggregazioni e le proiezioni.
+      </p>
+      <p>
+        In Node.js scrivi CQL con due stili: <strong>fluent API</strong> (catena di metodi) o
+        <strong>tagged templates</strong> (SQL-like). Entrambi producono lo stesso oggetto canonico:
+        <strong>CQN</strong> (Core Query Notation).
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>due stili, una semantica</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// FLUENT API</span>
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books)
+  .<span class="fn">columns</span>(<span class="str">'ID'</span>, <span class="str">'title'</span>, <span class="str">'price'</span>)
+  .<span class="fn">where</span>({ price: { <span class="str">'&gt;'</span>: <span class="num">20</span> } })
+  .<span class="fn">orderBy</span>(<span class="str">'title'</span>)
+  .<span class="fn">limit</span>(<span class="num">10</span>);
+
+<span class="cmt">// TAGGED TEMPLATE</span>
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span><span class="str">`from </span><span class="op">${</span>Books<span class="op">}</span><span class="str"> { ID, title, price } where price &gt; </span><span class="op">${</span><span class="num">20</span><span class="op">}</span><span class="str"> order by title limit </span><span class="op">${</span><span class="num">10</span><span class="op">}</span><span class="str">`</span>;</code></pre>
+</div>
+    </section>
+
+    <section id="c-2">
+      <h2 data-num="8.2">CQN: il formato canonico delle query</h2>
+      <p>
+        Tutte le query CQL, prima di essere eseguite, vengono convertite in <strong>CQN</strong>: un oggetto
+        JavaScript JSON-serializzabile. CQN &egrave; il <em>linguaggio intermedio</em> di CAP: viaggia su rete,
+        si salva in cache, si trasforma con strumenti tipo Pipeline.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>CQN puro</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// la query precedente, in CQN puro</span>
+{
+  <span class="str">SELECT</span>: {
+    <span class="str">from</span>: { <span class="str">ref</span>: [<span class="str">'my.bookshop.Books'</span>] },
+    <span class="str">columns</span>: [
+      { <span class="str">ref</span>: [<span class="str">'ID'</span>] },
+      { <span class="str">ref</span>: [<span class="str">'title'</span>] },
+      { <span class="str">ref</span>: [<span class="str">'price'</span>] }
+    ],
+    <span class="str">where</span>: [{ <span class="str">ref</span>: [<span class="str">'price'</span>] }, <span class="str">'&gt;'</span>, { <span class="str">val</span>: <span class="num">20</span> }],
+    <span class="str">orderBy</span>: [{ <span class="str">ref</span>: [<span class="str">'title'</span>] }],
+    <span class="str">limit</span>: { <span class="str">rows</span>: { <span class="str">val</span>: <span class="num">10</span> } }
+  }
+}</code></pre>
+</div>
+<div class="callout">
+  <div class="callout-label">Perch&eacute; importa</div>
+  <p>Conoscere CQN ti permette di <em>manipolare</em> le query a runtime: aggiungere filtri di sicurezza, riscrivere condizioni, intercettare e ottimizzare. Negli handler <code>req.query</code> &egrave; sempre un oggetto CQN: puoi leggerlo, modificarlo, sostituirlo.</p>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>manipolazione CQN</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// intercetta una READ e aggiungi un filtro di sicurezza</span>
+<span class="kw">this</span>.<span class="fn">before</span>(<span class="str">'READ'</span>, Orders, req =&gt; {
+  <span class="cmt">// req.query &egrave; un oggetto CQN: aggiungi un AND</span>
+  req.query.SELECT.where = [
+    ...(req.query.SELECT.where || []),
+    <span class="str">'and'</span>,
+    { ref: [<span class="str">'createdBy'</span>] }, <span class="str">'='</span>, { val: req.user.id }
+  ];
+});</code></pre>
+</div>
+    </section>
+
+    <section id="c-3">
+      <h2 data-num="8.3">SELECT: la query base</h2>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>varianti di SELECT</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// tutti i libri</span>
+<span class="kw">const</span> all = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books);
+
+<span class="cmt">// uno solo (per key)</span>
+<span class="kw">const</span> one = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">where</span>({ ID: bookId });
+
+<span class="cmt">// colonne specifiche</span>
+<span class="kw">const</span> light = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">columns</span>(<span class="str">'ID'</span>, <span class="str">'title'</span>);
+
+<span class="cmt">// con calcoli</span>
+<span class="kw">const</span> withVat = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">columns</span>(b =&gt; {
+  b.ID,
+  b.title,
+  b.price.<span class="fn">as</span>(<span class="str">'net'</span>),
+  (b.price * <span class="num">1.22</span>).<span class="fn">as</span>(<span class="str">'gross'</span>)
+});
+
+<span class="cmt">// con ordinamento e paginazione</span>
+<span class="kw">const</span> page = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books)
+  .<span class="fn">orderBy</span>({ title: <span class="str">'asc'</span> }, { price: <span class="str">'desc'</span> })
+  .<span class="fn">limit</span>(<span class="num">10</span>, <span class="num">20</span>);  <span class="cmt">// 10 righe, offset 20</span>
+
+<span class="cmt">// distinct</span>
+<span class="kw">const</span> countries = <span class="kw">await</span> <span class="fn">SELECT</span>.distinct.<span class="fn">from</span>(Authors).<span class="fn">columns</span>(<span class="str">'country_code'</span>);</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">SELECT.one</div>
+  <p><code>SELECT.one</code> restituisce un singolo oggetto (o <code>null</code>), non un array. &Egrave; ottimo per le query &laquo;trovami questo record specifico&raquo;: niente <code>[0]</code> da gestire, niente confusione.</p>
+</div>
+    </section>
+
+    <section id="c-4">
+      <h2 data-num="8.4">Path expressions: addio JOIN scritti a mano</h2>
+      <p>
+        La <em>superpotenza</em> di CQL: scrivi <code>book.author.country.name</code> e CAP genera i JOIN
+        necessari. Non scriverai mai pi&ugrave; un <code>JOIN</code> a mano.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>path expressions</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// trova tutti i libri di autori italiani</span>
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books)
+  .<span class="fn">where</span>({ <span class="str">'author.country.code'</span>: <span class="str">'IT'</span> });
+
+<span class="cmt">// stesso con tagged template</span>
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span><span class="str">`
+  from </span><span class="op">${</span>Books<span class="op">}</span><span class="str">
+  where author.country.code = </span><span class="op">${</span><span class="str">'IT'</span><span class="op">}</span><span class="str">
+`</span>;
+
+<span class="cmt">// nei columns: estrai dati lungo il path</span>
+<span class="kw">const</span> rows = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">columns</span>(
+  <span class="str">'ID'</span>,
+  <span class="str">'title'</span>,
+  <span class="str">'author.name as authorName'</span>,
+  <span class="str">'author.country.name as country'</span>,
+  <span class="str">'publisher.country.region.name as region'</span>
+);</code></pre>
+</div>
+      <p>
+        Sotto il cofano, CAP traduce in SQL con i JOIN giusti. Se attraversi un'association
+        <strong>to-many</strong>, ottieni una riga per ogni combinazione (cartesiano), come in SQL.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>SQL generato</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">-- l'SQL che CAP produce dietro le quinte</span>
+<span class="kw">SELECT</span> b.<span class="type">ID</span>, b.title,
+       a.name <span class="kw">AS</span> authorName,
+       c.name <span class="kw">AS</span> country
+<span class="kw">FROM</span> Books b
+<span class="kw">LEFT JOIN</span> Authors a   <span class="kw">ON</span> b.author_ID = a.<span class="type">ID</span>
+<span class="kw">LEFT JOIN</span> Countries c <span class="kw">ON</span> a.country_code = c.code
+<span class="kw">WHERE</span> c.code = <span class="str">'IT'</span>;</code></pre>
+</div>
+    </section>
+
+    <section id="c-5">
+      <h2 data-num="8.5">Expand: la chiave dei deep read</h2>
+      <p>
+        Path expressions ti danno colonne piatte. <strong>Expand</strong> ti d&agrave; <em>oggetti annidati</em>:
+        una query che restituisce il libro <em>con dentro</em> l'oggetto autore e l'array delle recensioni.
+        &Egrave; il modo idiomatico per popolare strutture gerarchiche complete.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>expand multi-level</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// expand semplice: porta dentro l'autore intero</span>
+<span class="kw">const</span> book = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">columns</span>(b =&gt; {
+  b.<span class="str">'*'</span>,
+  b.author(a =&gt; { a.ID, a.name, a.country_code })
+}).<span class="fn">where</span>({ ID: bookId });
+
+<span class="cmt">// risultato</span>
+{
+  ID: <span class="str">'a1b2-...'</span>,
+  title: <span class="str">'Domain-Driven Design'</span>,
+  price: <span class="num">45</span>,
+  author: { ID: <span class="str">'x9y8-...'</span>, name: <span class="str">'Eric Evans'</span>, country_code: <span class="str">'US'</span> }
+}
+
+<span class="cmt">// expand to-many: array di figli</span>
+<span class="kw">const</span> book = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">columns</span>(b =&gt; {
+  b.<span class="str">'*'</span>,
+  b.reviews(r =&gt; { r.ID, r.rating, r.comment })
+}).<span class="fn">where</span>({ ID: bookId });
+
+<span class="cmt">// risultato</span>
+{
+  ID: <span class="str">'a1b2-...'</span>,
+  title: <span class="str">'Domain-Driven Design'</span>,
+  reviews: [
+    { ID: <span class="str">'r1-...'</span>, rating: <span class="num">5</span>, comment: <span class="str">'Excellent'</span> },
+    { ID: <span class="str">'r2-...'</span>, rating: <span class="num">4</span>, comment: <span class="str">'Hard but worth it'</span> }
+  ]
+}
+
+<span class="cmt">// expand annidato: tre livelli</span>
+<span class="kw">const</span> book = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">columns</span>(b =&gt; {
+  b.ID, b.title,
+  b.author(a =&gt; {
+    a.name,
+    a.country(c =&gt; { c.code, c.name })
+  }),
+  b.reviews(r =&gt; { r.rating, r.user(u =&gt; { u.name }) })
+});</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Con tagged template</div>
+  <p>L'expand ha sintassi naturale anche in template: <code>{ author { name, country { code, name } } }</code>. La curly brace dopo un'association vale come <em>expand</em>.</p>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>expand in template</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">const</span> book = <span class="kw">await</span> <span class="fn">SELECT</span>.one<span class="str">`
+  from </span><span class="op">${</span>Books<span class="op">}</span><span class="str"> {
+    ID, title,
+    author { name, country { code, name } },
+    reviews { rating, comment }
+  }
+  where ID = </span><span class="op">${</span>bookId<span class="op">}</span><span class="str">
+`</span>;</code></pre>
+</div>
+    </section>
+
+    <section id="c-6">
+      <h2 data-num="8.6">WHERE, filter, e operatori speciali</h2>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>where avanzato</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// notazione oggetto: comodissima per filtri AND</span>
+<span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">where</span>({
+  stock: { <span class="str">'&gt;'</span>: <span class="num">0</span> },
+  price: { between: [<span class="num">10</span>, <span class="num">100</span>] },
+  title: { like: <span class="str">'%CAP%'</span> }
+});
+
+<span class="cmt">// operatori supportati</span>
+{ price: { <span class="str">'='</span>:  <span class="num">29</span> } }
+{ price: { <span class="str">'!='</span>: <span class="num">29</span> } }
+{ price: { <span class="str">'&gt;='</span>: <span class="num">10</span> } }
+{ price: { <span class="str">'&lt;'</span>:  <span class="num">100</span> } }
+{ price: { between: [<span class="num">10</span>, <span class="num">100</span>] } }
+{ title: { like: <span class="str">'%cap%'</span> } }
+{ ID:    { <span class="str">in</span>: [<span class="str">'a1'</span>, <span class="str">'a2'</span>, <span class="str">'a3'</span>] } }
+{ description: { isNull: <span class="kw">true</span> } }
+
+<span class="cmt">// IN con subquery</span>
+<span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">where</span>({
+  author_ID: {
+    <span class="str">in</span>: <span class="fn">SELECT</span>.<span class="fn">from</span>(Authors).<span class="fn">columns</span>(<span class="str">'ID'</span>).<span class="fn">where</span>({ country_code: <span class="str">'IT'</span> })
+  }
+});
+
+<span class="cmt">// OR / AND espliciti con array</span>
+<span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">where</span>([
+  { author_ID: <span class="str">'a1'</span> },
+  <span class="str">'or'</span>,
+  { author_ID: <span class="str">'a2'</span> }
+]);</code></pre>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-label">Trap: shorthand vs operatori</div>
+  <p><code>.where({ price: 29 })</code> &egrave; <code>price = 29</code>. <code>.where({ price: [29, 30] })</code> &egrave; <code>price IN (29, 30)</code>. <code>.where({ price: { between: [29, 30] } })</code> &egrave; <code>price BETWEEN 29 AND 30</code>. Tre comportamenti diversi: leggi sempre attentamente.</p>
+</div>
+    </section>
+
+    <section id="c-7">
+      <h2 data-num="8.7">Aggregazioni e GROUP BY</h2>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>GROUP BY</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// totali per autore</span>
+<span class="kw">const</span> stats = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books)
+  .<span class="fn">columns</span>(
+    <span class="str">'author_ID'</span>,
+    { func: <span class="str">'count'</span>, args: [{ ref: [<span class="str">'*'</span>] }], as: <span class="str">'cnt'</span> },
+    { func: <span class="str">'avg'</span>,   args: [{ ref: [<span class="str">'price'</span>] }], as: <span class="str">'avgPrice'</span> },
+    { func: <span class="str">'sum'</span>,   args: [{ ref: [<span class="str">'stock'</span>] }], as: <span class="str">'totalStock'</span> }
+  )
+  .<span class="fn">groupBy</span>(<span class="str">'author_ID'</span>)
+  .<span class="fn">having</span>({ <span class="str">'sum(stock)'</span>: { <span class="str">'&gt;'</span>: <span class="num">100</span> } })
+  .<span class="fn">orderBy</span>({ cnt: <span class="str">'desc'</span> });
+
+<span class="cmt">// versione tagged template (molto piu&grave; leggibile)</span>
+<span class="kw">const</span> stats = <span class="kw">await</span> <span class="fn">SELECT</span><span class="str">`
+  from </span><span class="op">${</span>Books<span class="op">}</span><span class="str"> {
+    author_ID,
+    count(*)    as cnt   : Integer,
+    avg(price)  as avgP  : Decimal(9,2),
+    sum(stock)  as totS  : Integer
+  }
+  group by author_ID
+  having sum(stock) &gt; 100
+  order by cnt desc
+`</span>;</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Pushdown</div>
+  <p>Le aggregazioni in CDS vengono <em>pushed down</em> al database: HANA esegue il calcolo, CAP riceve gi&agrave; i risultati aggregati. Non c'&egrave; mai un caricamento in memoria di milioni di righe. Per analisi pesanti, valuta calculation view nativi (capitolo 9).</p>
+</div>
+    </section>
+
+    <section id="c-8">
+      <h2 data-num="8.8">INSERT, UPDATE, UPSERT, DELETE</h2>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>mutazioni</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// INSERT singolo</span>
+<span class="kw">await</span> <span class="fn">INSERT</span>.<span class="fn">into</span>(Books).<span class="fn">entries</span>({
+  title: <span class="str">'Refactoring'</span>,
+  price: <span class="num">35</span>,
+  author_ID: <span class="str">'a1b2-...'</span>
+});
+
+<span class="cmt">// INSERT multipli (bulk)</span>
+<span class="kw">await</span> <span class="fn">INSERT</span>.<span class="fn">into</span>(Books).<span class="fn">entries</span>([
+  { title: <span class="str">'Clean Code'</span>, price: <span class="num">30</span>, author_ID: <span class="str">'a1'</span> },
+  { title: <span class="str">'The Pragmatic Programmer'</span>, price: <span class="num">28</span>, author_ID: <span class="str">'a2'</span> }
+]);
+
+<span class="cmt">// INSERT da SELECT (clone)</span>
+<span class="kw">await</span> <span class="fn">INSERT</span>.<span class="fn">into</span>(BooksArchive)
+  .<span class="fn">columns</span>(<span class="str">'ID'</span>, <span class="str">'title'</span>, <span class="str">'price'</span>)
+  .<span class="fn">as</span>(<span class="fn">SELECT</span>.<span class="fn">from</span>(Books).<span class="fn">columns</span>(<span class="str">'ID'</span>, <span class="str">'title'</span>, <span class="str">'price'</span>).<span class="fn">where</span>({ archived: <span class="kw">true</span> }));
+
+<span class="cmt">// UPDATE</span>
+<span class="kw">await</span> <span class="fn">UPDATE</span>(Books)
+  .<span class="fn">set</span>({ price: { <span class="str">'+='</span>: <span class="num">5</span> } })       <span class="cmt">// aritmetica incrementale!</span>
+  .<span class="fn">where</span>({ category_code: <span class="str">'BUSINESS'</span> });
+
+<span class="cmt">// UPSERT: inserisci o aggiorna se la key esiste</span>
+<span class="kw">await</span> <span class="fn">UPSERT</span>.<span class="fn">into</span>(Books).<span class="fn">entries</span>({
+  ID: <span class="str">'a1b2-...'</span>,
+  title: <span class="str">'New title'</span>,
+  price: <span class="num">42</span>
+});
+
+<span class="cmt">// DELETE</span>
+<span class="kw">const</span> { affectedRows } = <span class="kw">await</span> <span class="fn">DELETE</span>.<span class="fn">from</span>(Books).<span class="fn">where</span>({ stock: <span class="num">0</span> });
+console.<span class="fn">log</span>(<span class="str">`</span><span class="op">${</span>affectedRows<span class="op">}</span><span class="str"> libri eliminati`</span>);
+
+<span class="cmt">// DELETE deep (con composition): elimina anche figli</span>
+<span class="kw">await</span> <span class="fn">DELETE</span>.<span class="fn">from</span>(Orders).<span class="fn">where</span>({ ID: orderId });
+<span class="cmt">// CAP elimina automaticamente le composition (es. OrderItems)</span></code></pre>
+</div>
+<div class="callout">
+  <div class="callout-label">Aritmetica incrementale</div>
+  <p><code>{ '+=': 5 }</code>, <code>{ '-=': 1 }</code>, <code>{ '*=': 2 }</code>: utilissimi per stock, contatori, saldi. Generano SQL atomico <code>SET stock = stock - 1</code>, evitando race condition tra read e update.</p>
+</div>
+    </section>
+
+    <section id="c-9">
+      <h2 data-num="8.9">Tagged templates: la sintassi naturale</h2>
+      <p>
+        I tagged templates leggono come SQL ma con i poteri di CQL. Le interpolazioni <code>${...}</code>
+        sono <em>parametrizzate</em>: niente SQL injection, niente concatenazione manuale.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>stesso risultato, due stili</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">const</span> minPrice = <span class="num">20</span>;
+<span class="kw">const</span> country  = <span class="str">'IT'</span>;
+
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span><span class="str">`
+  from </span><span class="op">${</span>Books<span class="op">}</span><span class="str"> {
+    ID,
+    title,
+    price,
+    author.name as authorName,
+    author.country.name as country,
+    reviews { rating, comment }
+  }
+  where price &gt; </span><span class="op">${</span>minPrice<span class="op">}</span><span class="str">
+    and author.country.code = </span><span class="op">${</span>country<span class="op">}</span><span class="str">
+  order by title
+  limit 20
+`</span>;
+
+<span class="cmt">// equivalente fluent</span>
+<span class="kw">const</span> books = <span class="kw">await</span> <span class="fn">SELECT</span>.<span class="fn">from</span>(Books)
+  .<span class="fn">columns</span>(b =&gt; { b.ID, b.title, b.price,
+    b.author(a =&gt; { a.name.<span class="fn">as</span>(<span class="str">'authorName'</span>),
+                   a.country(c =&gt; c.name.<span class="fn">as</span>(<span class="str">'country'</span>)) }),
+    b.reviews(r =&gt; { r.rating, r.comment }) })
+  .<span class="fn">where</span>({ price: { <span class="str">'&gt;'</span>: minPrice }, <span class="str">'author.country.code'</span>: country })
+  .<span class="fn">orderBy</span>(<span class="str">'title'</span>)
+  .<span class="fn">limit</span>(<span class="num">20</span>);</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Quando preferire uno o l'altro</div>
+  <p><strong>Tagged template</strong> per query lunghe, leggibili, con expand annidati. <strong>Fluent</strong> quando devi <em>costruire</em> dinamicamente la query (parti opzionali, filtri condizionali, append). Le due forme si possono mescolare via <code>cqn4sql</code>.</p>
+</div>
+    </section>
+
+    <section id="c-10">
+      <h2 data-num="8.10">Transazioni e <code>cds.tx</code></h2>
+      <p>
+        Ogni richiesta HTTP in CAP &egrave; gi&agrave; dentro una transazione automatica. Ma quando devi
+        fare operazioni <em>fuori</em> dal flusso request/response (job, background, batch), gestisci tu
+        la transazione con <code>cds.tx</code>.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>transactions</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// transazione esplicita</span>
+<span class="kw">await</span> cds.<span class="fn">tx</span>(<span class="kw">async</span> tx =&gt; {
+  <span class="kw">await</span> tx.<span class="fn">run</span>(<span class="fn">INSERT</span>.<span class="fn">into</span>(Orders).<span class="fn">entries</span>({ ... }));
+  <span class="kw">await</span> tx.<span class="fn">run</span>(<span class="fn">UPDATE</span>(Books).<span class="fn">set</span>({ stock: { <span class="str">'-='</span>: <span class="num">1</span> } }).<span class="fn">where</span>({ ID: bookId }));
+  <span class="cmt">// se una delle due fallisce: rollback automatico</span>
+});
+
+<span class="cmt">// dentro un handler: usa req invece di tx</span>
+<span class="kw">this</span>.<span class="fn">on</span>(<span class="str">'submitOrder'</span>, <span class="kw">async</span> req =&gt; {
+  <span class="kw">const</span> { book, quantity } = req.data;
+
+  <span class="cmt">// req.run() &egrave; la transazione corrente (quella della richiesta HTTP)</span>
+  <span class="kw">await</span> req.<span class="fn">run</span>(<span class="fn">UPDATE</span>(Books).<span class="fn">set</span>({ stock: { <span class="str">'-='</span>: quantity } }).<span class="fn">where</span>({ ID: book }));
+  <span class="kw">return</span> req.<span class="fn">run</span>(<span class="fn">INSERT</span>.<span class="fn">into</span>(Orders).<span class="fn">entries</span>({ book_ID: book, quantity }));
+});
+
+<span class="cmt">// rollback manuale (caso particolare)</span>
+<span class="kw">await</span> cds.<span class="fn">tx</span>(<span class="kw">async</span> tx =&gt; {
+  <span class="kw">try</span> {
+    <span class="kw">await</span> tx.<span class="fn">run</span>(<span class="fn">INSERT</span>.<span class="fn">into</span>(...).<span class="fn">entries</span>(...));
+    <span class="kw">if</span> (<span class="fn">somethingWrong</span>()) <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'rollback'</span>);
+  } <span class="kw">catch</span> (e) {
+    <span class="cmt">// tx.rollback() implicito quando esce con throw</span>
+    <span class="kw">throw</span> e;
+  }
+});</code></pre>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-label">Mai mescolare connessioni</div>
+  <p>Non eseguire query con <code>cds.db</code> dentro un <code>cds.tx</code>: useresti due connessioni diverse e perderesti l'atomicit&agrave;. Dentro la transazione, usa <em>solo</em> il parametro <code>tx</code>.</p>
+</div>
+    </section>
+
+    <section id="c-11">
+      <h2 data-num="8.11">Cross-service queries con <code>cds.connect.to</code></h2>
+      <p>
+        I servizi CAP comunicano tra loro come fossero database. <code>cds.connect.to('NomeServizio')</code>
+        ti d&agrave; un client su cui chiamare CQL. Funziona sia per servizi locali sia per servizi remoti
+        (S/4HANA, SuccessFactors, qualunque OData esterno configurato come destination).
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>connect.to multi-uso</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// chiamata a un altro servizio CAP nella stessa app</span>
+<span class="kw">const</span> catalog = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'CatalogService'</span>);
+<span class="kw">const</span> top = <span class="kw">await</span> catalog.<span class="fn">run</span>(
+  <span class="fn">SELECT</span>.<span class="fn">from</span>(<span class="str">'Books'</span>).<span class="fn">orderBy</span>({ rating: <span class="str">'desc'</span> }).<span class="fn">limit</span>(<span class="num">10</span>)
+);
+
+<span class="cmt">// chiamata a servizio esterno (configurato in package.json o env)</span>
+<span class="kw">const</span> s4 = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'API_BUSINESS_PARTNER'</span>);
+<span class="kw">const</span> partners = <span class="kw">await</span> s4.<span class="fn">run</span>(
+  <span class="fn">SELECT</span>.<span class="fn">from</span>(<span class="str">'A_BusinessPartner'</span>).<span class="fn">where</span>({ Country: <span class="str">'IT'</span> }).<span class="fn">limit</span>(<span class="num">50</span>)
+);
+
+<span class="cmt">// emettere eventi su una coda</span>
+<span class="kw">const</span> messaging = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'messaging'</span>);
+<span class="kw">await</span> messaging.<span class="fn">emit</span>(<span class="str">'OrderPlaced'</span>, { orderId, total });
+
+<span class="cmt">// chiamata REST generica</span>
+<span class="kw">const</span> api = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'ExternalAPI'</span>);
+<span class="kw">const</span> data = <span class="kw">await</span> api.<span class="fn">send</span>({
+  method: <span class="str">'POST'</span>,
+  path  : <span class="str">'/v2/calculate'</span>,
+  data  : { amount: <span class="num">100</span> }
+});</code></pre>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>wiring servizi esterni</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># package.json — configurazione destination</span>
+<span class="str">"cds"</span>: {
+  <span class="str">"requires"</span>: {
+    <span class="str">"API_BUSINESS_PARTNER"</span>: {
+      <span class="str">"kind"</span>: <span class="str">"odata-v2"</span>,
+      <span class="str">"model"</span>: <span class="str">"srv/external/API_BUSINESS_PARTNER"</span>,
+      <span class="str">"credentials"</span>: { <span class="str">"destination"</span>: <span class="str">"S4HANA_CLOUD"</span> }
+    },
+    <span class="str">"messaging"</span>: {
+      <span class="str">"kind"</span>: <span class="str">"enterprise-messaging"</span>
+    }
+  }
+}</code></pre>
+</div>
+    </section>
+
+    <section id="c-12">
+      <h2 data-num="8.12">Esercizio del capitolo</h2>
+      <ol>
+        <li>Scrivi una query CQL (fluent + tagged) che restituisca tutti i libri con autore italiano, prezzo &gt; 20, con expand di <code>author</code> e <code>reviews</code>.</li>
+        <li>Scrivi un'aggregazione che dia: per ogni categoria, count, avg(price), max(price), sum(stock); filtra solo categorie con almeno 5 libri.</li>
+        <li>Scrivi una <code>UPDATE</code> che incrementi del 10% i prezzi dei libri di una specifica categoria.</li>
+        <li>Scrivi un'UPSERT che inserisca o aggiorni 5 libri in batch.</li>
+        <li>In un handler <code>this.on('placeOrder', ...)</code>, dentro <code>cds.tx</code>: decrementa stock, inserisci Order, inserisci OrderItems, emetti evento <code>'OrderPlaced'</code>.</li>
+        <li>Connettiti a un servizio esterno fake (mock) <code>'CurrencyService'</code> e moltiplica il prezzo dei libri per il tasso di cambio prima di restituirli.</li>
+        <li>Crea una query con <code>IN</code> subquery: tutti i libri di autori che hanno almeno 3 recensioni con rating &gt;= 4.</li>
+      </ol>
+    </section>
+
+
+    <nav class="chapter-nav">
+  <a href="ch07-annotations.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">07 · Annotations</span>
+  </a>
+  <a href="ch09-hana.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">09 · Deploy & HANA nativo</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#c-1" >8.1 · CQL: SQL ridisegnato per il XXI secolo</a></li>
+    <li><a href="#c-2" >8.2 · CQN: il formato canonico delle query</a></li>
+    <li><a href="#c-3" >8.3 · SELECT: la query base</a></li>
+    <li><a href="#c-4" >8.4 · Path expressions: addio JOIN scritti a mano</a></li>
+    <li><a href="#c-5" >8.5 · Expand: la chiave dei deep read</a></li>
+    <li><a href="#c-6" >8.6 · WHERE, filter, e operatori speciali</a></li>
+    <li><a href="#c-7" >8.7 · Aggregazioni e GROUP BY</a></li>
+    <li><a href="#c-8" >8.8 · INSERT, UPDATE, UPSERT, DELETE</a></li>
+    <li><a href="#c-9" >8.9 · Tagged templates: la sintassi naturale</a></li>
+    <li><a href="#c-10" >8.10 · Transazioni e cds.tx</a></li>
+    <li><a href="#c-11" >8.11 · Cross-service queries con cds.connect.to</a></li>
+    <li><a href="#c-12" >8.12 · Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

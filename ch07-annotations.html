@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 07 · Annotations — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html" class="active"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 07</span>
+      <span>Annotations</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">07</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 07 · Annotations</div>
+        <h1 class="chapter-title">Annotations</h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Le <em>annotations</em> sono il meta-linguaggio di CAP. Con poche righe dichiarative descrivi etichette, semantica, regole di accesso, UI generata. Padroneggiarle significa scrivere il 10% del codice e ottenere il 100% del risultato.</p>
+    
+
+    <section id="a-1">
+      <h2 data-num="7.1">Annotations: il linguaggio meta di CAP</h2>
+      <p>
+        Se i tipi e le entity sono le <em>parole</em> di CDS, le <strong>annotations</strong> sono i suoi
+        <em>aggettivi</em>. Non descrivono <em>cosa</em> è un dato, ma <em>come</em> deve essere trattato:
+        etichetta UI, valore semantico, regola di accesso, metadato per il rendering, vincolo di capacità.
+      </p>
+      <p>
+        Le annotations sono <strong>dichiarative</strong>: tu scrivi cosa vuoi, CAP traduce in OData
+        <code>$metadata</code>, in regole runtime, in UI generata. Lo stesso modello CDS &mdash; con le
+        annotations giuste &mdash; produce automaticamente una List Report Fiori Elements, una Object Page
+        editabile, un draft handling completo, regole di restrizione utente.
+      </p>
+<div class="callout">
+  <div class="callout-label">Il salto mentale</div>
+  <p>I framework tradizionali ti fanno scrivere codice <em>imperativo</em> (&laquo;quando l'utente clicca, fai X&raquo;). CAP ti fa <em>annotare</em> il modello (&laquo;questa entity ha questi campi visibili in lista&raquo;), e l'UI viene generata coerentemente. Meno codice, più consistenza.</p>
+</div>
+    </section>
+
+    <section id="a-2">
+      <h2 data-num="7.2">Sintassi: prefissi, vocabolari, <code>$value</code></h2>
+      <p>
+        Un'annotation ha la forma <code>@Vocabulary.Term: value</code>. Il <em>vocabolario</em> è il
+        namespace (Common, UI, Measures, Core, Capabilities, ...); il <em>term</em> è il nome specifico.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>tre stili equivalenti</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="ann">@Common.Label</span>: <span class="str">'Titolo libro'</span>
+<span class="ann">@Common.Heading</span>: <span class="str">'Titolo'</span>
+title : <span class="type">String</span>(<span class="num">100</span>);
+
+<span class="cmt">// stessa cosa con sintassi inline post-fissa</span>
+title : <span class="type">String</span>(<span class="num">100</span>) <span class="ann">@title</span>: <span class="str">'Titolo libro'</span>;
+
+<span class="cmt">// annotations multiple: blocco</span>
+title : <span class="type">String</span>(<span class="num">100</span>) <span class="ann">@(
+  Common.Label</span>: <span class="str">'Titolo'</span>,
+  <span class="ann">Common.Heading</span>: <span class="str">'Title'</span>,
+  <span class="ann">mandatory</span>
+);</code></pre>
+</div>
+      <p>
+        Le annotations possono essere applicate a <em>qualsiasi cosa</em>: entity, element, association,
+        parameter, action, service. Possono essere booleane (<code>@readonly</code> = true), stringhe,
+        numeri, riferimenti a element (<code>@Common.Text: author.name</code>), o oggetti complessi.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>varianti di valore</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// annotation booleana — sottintende true</span>
+<span class="ann">@readonly</span> name : <span class="type">String</span>;
+
+<span class="cmt">// annotation con riferimento a element</span>
+<span class="ann">@Common.Text</span>: author.name
+author : <span class="kw">Association to</span> <span class="type">Authors</span>;
+
+<span class="cmt">// annotation oggetto complesso</span>
+<span class="ann">@UI.HeaderInfo</span>: {
+  TypeName       : <span class="str">'Book'</span>,
+  TypeNamePlural : <span class="str">'Books'</span>,
+  Title          : { Value: title }
+}</code></pre>
+</div>
+    </section>
+
+    <section id="a-3">
+      <h2 data-num="7.3"><code>@Common</code>: il vocabolario quotidiano</h2>
+      <p>
+        Il vocabolario <code>@Common</code> contiene le annotation che usi <em>ogni giorno</em>: etichette,
+        intestazioni, descrizioni, semantica testuale, riferimenti.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>Common.Label/Text/TextArrangement</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> {
+  ID     <span class="ann">@Common.Label</span>: <span class="str">'ID'</span>     <span class="ann">@Core.Computed</span>;
+  title  <span class="ann">@Common.Label</span>: <span class="str">'Titolo'</span> <span class="ann">@mandatory</span>;
+  isbn   <span class="ann">@Common.Label</span>: <span class="str">'ISBN'</span>;
+  price  <span class="ann">@Common.Label</span>: <span class="str">'Prezzo'</span>;
+  author <span class="ann">@Common.Label</span>: <span class="str">'Autore'</span>
+         <span class="ann">@Common.Text</span>: author.name
+         <span class="ann">@Common.TextArrangement</span>: <span class="ann">#TextOnly</span>;
+};</code></pre>
+</div>
+      <p>
+        <code>@Common.Text</code> &egrave; uno dei piu&grave; potenti: dice &laquo;quando devi mostrare questo
+        campo, usa il <em>testo</em> di un altro campo o di un'associazione&raquo;. Combinato con
+        <code>@Common.TextArrangement</code> controlli se mostrare solo il testo, solo l'id, o entrambi.
+      </p>
+      <p>Valori di <code>TextArrangement</code>:</p>
+      <table>
+        <thead><tr><th>Valore</th><th>Effetto</th></tr></thead>
+        <tbody>
+          <tr><td><code>#TextFirst</code></td><td>Nome Autore (123)</td></tr>
+          <tr><td><code>#TextLast</code></td><td>123 (Nome Autore)</td></tr>
+          <tr><td><code>#TextOnly</code></td><td>Nome Autore</td></tr>
+          <tr><td><code>#TextSeparate</code></td><td>123 e Nome Autore in colonne separate</td></tr>
+        </tbody>
+      </table>
+<div class="callout callout-tip">
+  <div class="callout-label">Pattern Value Help</div>
+  <p><code>@Common.ValueList</code> &egrave; la chiave per generare automaticamente i value help (le finestre di selezione tipiche di Fiori) sulle association. Se la tua entity ha <code>author : Association to Authors</code>, basta annotare e Fiori Elements ti dar&agrave; il search dialog gratis.</p>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>value help completo</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> {
+  author <span class="ann">@Common.ValueList</span>: {
+    CollectionPath : <span class="str">'Authors'</span>,
+    Parameters     : [
+      { <span class="ann">$Type</span>: <span class="str">'Common.ValueListParameterInOut'</span>,
+        LocalDataProperty: author_ID,
+        ValueListProperty: <span class="str">'ID'</span> },
+      { <span class="ann">$Type</span>: <span class="str">'Common.ValueListParameterDisplayOnly'</span>,
+        ValueListProperty: <span class="str">'name'</span> },
+      { <span class="ann">$Type</span>: <span class="str">'Common.ValueListParameterDisplayOnly'</span>,
+        ValueListProperty: <span class="str">'country.name'</span> }
+    ]
+  };
+};</code></pre>
+</div>
+    </section>
+
+    <section id="a-4">
+      <h2 data-num="7.4"><code>@UI</code>: generare Fiori Elements</h2>
+      <p>
+        Qui sta una delle cose pi&ugrave; potenti di CAP: <strong>genera UI complete da annotation</strong>.
+        Niente XML view, niente JavaScript controller. Annoti il servizio, lanci Fiori Elements, hai
+        l'applicazione.
+      </p>
+      <p>
+        Le annotation <code>@UI.*</code> definiscono <em>cosa</em> mostrare (LineItem = colonne in tabella,
+        HeaderInfo = intestazione di pagina, Facets = sezioni della Object Page) e <em>come</em>. Sono
+        verbose ma estremamente espressive: una buona annotazione UI sostituisce centinaia di righe di
+        codice frontend.
+      </p>
+<div class="callout">
+  <div class="callout-label">Workflow tipico</div>
+  <p>Modello dati (<code>db/</code>) &rarr; service (<code>srv/</code>) &rarr; annotations UI in un file separato (<code>srv/catalog-ui.cds</code>) &rarr; <code>cds add fiori-elements</code> oppure crea l'app a mano in <code>app/</code>. La separazione tra modello e annotazioni UI &egrave; un best practice fondamentale.</p>
+</div>
+    </section>
+
+    <section id="a-5">
+      <h2 data-num="7.5">LineItem, HeaderInfo, Facets</h2>
+      <p>
+        Questi tre sono il <em>core trio</em> di una Object Page Fiori Elements:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>trio UI base</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> <span class="ann">@(
+
+  // LIST REPORT: colonne in tabella
+  UI.LineItem</span>: [
+    { Value: title,         Label: <span class="str">'Titolo'</span> },
+    { Value: author.name,   Label: <span class="str">'Autore'</span> },
+    { Value: price,         Label: <span class="str">'Prezzo'</span> },
+    { Value: stock,         Label: <span class="str">'Disponibili'</span>,
+      <span class="ann">@UI.Importance</span>: <span class="ann">#High</span> },
+    { Value: category.name, Label: <span class="str">'Categoria'</span> }
+  ],
+
+  <span class="cmt">// OBJECT PAGE: intestazione</span>
+  <span class="ann">UI.HeaderInfo</span>: {
+    TypeName       : <span class="str">'Libro'</span>,
+    TypeNamePlural : <span class="str">'Libri'</span>,
+    Title          : { Value: title },
+    Description    : { Value: author.name }
+  },
+
+  <span class="cmt">// OBJECT PAGE: sezioni</span>
+  <span class="ann">UI.Facets</span>: [
+    { <span class="ann">$Type</span>: <span class="str">'UI.ReferenceFacet'</span>,
+      ID    : <span class="str">'GeneralInfo'</span>,
+      Label : <span class="str">'Informazioni generali'</span>,
+      Target: <span class="str">'@UI.FieldGroup#General'</span> },
+    { <span class="ann">$Type</span>: <span class="str">'UI.ReferenceFacet'</span>,
+      ID    : <span class="str">'Pricing'</span>,
+      Label : <span class="str">'Prezzo &amp; disponibilit&agrave;'</span>,
+      Target: <span class="str">'@UI.FieldGroup#Price'</span> },
+    { <span class="ann">$Type</span>: <span class="str">'UI.ReferenceFacet'</span>,
+      ID    : <span class="str">'Reviews'</span>,
+      Label : <span class="str">'Recensioni'</span>,
+      Target: <span class="str">'reviews/@UI.LineItem'</span> }   <span class="cmt">// !! nested LineItem</span>
+  ]
+)</span>;</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Importance</div>
+  <p><code>@UI.Importance: #High</code> dice a Fiori Elements: &laquo;mantieni questa colonna visibile anche sui dispositivi piccoli&raquo;. <code>#Low</code> nasconde su mobile. <code>#Medium</code> &egrave; default.</p>
+</div>
+    </section>
+
+    <section id="a-6">
+      <h2 data-num="7.6">FieldGroup, DataPoint, Identification</h2>
+      <p>
+        I FieldGroup sono <em>gruppi logici di campi</em> mostrati nella Object Page. I DataPoint sono
+        <em>singoli campi numerici con semantica di indicatore</em> (KPI). Identification sono i campi
+        identificativi mostrati nell'header.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>FieldGroup + DataPoint</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> <span class="ann">@(
+
+  UI.FieldGroup #General</span>: {
+    Data: [
+      { Value: title },
+      { Value: isbn },
+      { Value: author_ID, Label: <span class="str">'Autore'</span> },
+      { Value: category.name }
+    ]
+  },
+
+  <span class="ann">UI.FieldGroup #Price</span>: {
+    Data: [
+      { Value: price,
+        Criticality: stockStatus },             <span class="cmt">// colora in base a stockStatus</span>
+      { Value: currency.code },
+      { Value: stock,
+        Criticality: stockStatus },
+      { Value: discount }
+    ]
+  },
+
+  <span class="ann">UI.DataPoint #StockKPI</span>: {
+    Value         : stock,
+    Title         : <span class="str">'Disponibilit&agrave;'</span>,
+    Criticality   : stockStatus,
+    TargetValue   : <span class="num">100</span>,
+    Visualization : <span class="ann">#Progress</span>
+  },
+
+  <span class="ann">UI.HeaderFacets</span>: [
+    { <span class="ann">$Type</span>: <span class="str">'UI.ReferenceFacet'</span>,
+      Target: <span class="str">'@UI.DataPoint#StockKPI'</span> }
+  ]
+)</span>;</code></pre>
+</div>
+      <p>
+        I <strong>Criticality</strong> sono numeri (1=red, 2=orange, 3=green) o riferimenti a campi che
+        producono questi valori. Fiori Elements colora automaticamente in base al loro contenuto. Bastano
+        pochi <code>case when</code> per avere semafori e KPI vivi.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>criticality calcolato</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// nel modello: calcoliamo lo stockStatus</span>
+<span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as select from</span> db.<span class="type">Books</span> {
+  *,
+  <span class="kw">case when</span> stock = <span class="num">0</span>  <span class="kw">then</span> <span class="num">1</span>   <span class="cmt">// red</span>
+       <span class="kw">when</span> stock &lt; <span class="num">10</span> <span class="kw">then</span> <span class="num">2</span>   <span class="cmt">// orange</span>
+       <span class="kw">else</span> <span class="num">3</span> <span class="kw">end</span> <span class="kw">as</span> stockStatus : <span class="type">Integer</span>  <span class="cmt">// green</span>
+}</code></pre>
+</div>
+    </section>
+
+    <section id="a-7">
+      <h2 data-num="7.7">Filtri, ricerca, presentazione</h2>
+      <p>
+        Per controllare la <em>List Report</em>:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>filtri e variants</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> <span class="ann">@(
+
+  // campi nel filter bar
+  UI.SelectionFields</span>: [ title, author_ID, category_ID, price ],
+
+  <span class="cmt">// variante: ricerca rapida</span>
+  <span class="ann">UI.HeaderInfo</span>: { ... },
+
+  <span class="cmt">// search field (per @cds.search nel modello)</span>
+  <span class="ann">UI.PresentationVariant</span>: {
+    SortOrder       : [{ Property: title, Descending: <span class="kw">false</span> }],
+    Visualizations  : [<span class="str">'@UI.LineItem'</span>],
+    RequestAtLeast  : [ ID, title, price ],
+    MaxItems        : <span class="num">25</span>
+  },
+
+  <span class="ann">UI.SelectionVariant #InStock</span>: {
+    Text          : <span class="str">'Solo disponibili'</span>,
+    SelectOptions : [{
+      PropertyName : stock,
+      Ranges       : [{ Option: <span class="ann">#GT</span>, Low: <span class="num">0</span> }]
+    }]
+  },
+
+  <span class="ann">UI.SelectionVariant #Expensive</span>: {
+    Text          : <span class="str">'Premium'</span>,
+    SelectOptions : [{
+      PropertyName : price,
+      Ranges       : [{ Option: <span class="ann">#GE</span>, Low: <span class="num">50</span> }]
+    }]
+  }
+)</span>;</code></pre>
+</div>
+      <p>
+        Le <em>SelectionVariant</em> diventano <strong>tab preconfigurate</strong> nella List Report:
+        un click e l'utente filtra senza scrivere nulla. Combinate con <code>@cds.search</code> nel modello
+        permettono ricerche full-text immediate.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>search fields</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// nel modello db/</span>
+<span class="ann">@cds.search</span>: { title, isbn, author.name, description }
+<span class="kw">entity</span> <span class="type">Books</span> { ... }</code></pre>
+</div>
+    </section>
+
+    <section id="a-8">
+      <h2 data-num="7.8"><code>@Measures</code>, <code>@Capabilities</code>, <code>@Core</code></h2>
+      <p>
+        Tre vocabolari diversi, ognuno con un ruolo preciso:
+      </p>
+      <p>
+        <strong><code>@Measures</code></strong> &mdash; semantica numerica: valute, unit&agrave; di misura.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>Measures</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> {
+  price  <span class="ann">@Measures.ISOCurrency</span>: currency_code;
+  weight <span class="ann">@Measures.Unit</span>: weightUnit;
+};</code></pre>
+</div>
+      <p>
+        Fiori Elements formatta automaticamente: <code>29.90 EUR</code>, <code>1.5 kg</code>.
+      </p>
+      <p>
+        <strong><code>@Capabilities</code></strong> &mdash; cosa pu&ograve; e non pu&ograve; fare un client.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>Capabilities</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> <span class="ann">@(
+  Capabilities.InsertRestrictions</span>: { Insertable: <span class="kw">true</span> },
+  <span class="ann">Capabilities.UpdateRestrictions</span>: { Updatable: <span class="kw">true</span>,
+    NonUpdatableProperties: [ <span class="str">'isbn'</span>, <span class="str">'createdAt'</span> ] },
+  <span class="ann">Capabilities.DeleteRestrictions</span>: { Deletable: <span class="kw">false</span> },
+  <span class="ann">Capabilities.SearchRestrictions</span>: { Searchable: <span class="kw">true</span> },
+  <span class="ann">Capabilities.FilterRestrictions</span>: {
+    RequiredProperties      : [ category_ID ],
+    NonFilterableProperties : [ description ]
+  }
+)</span>;</code></pre>
+</div>
+      <p>
+        <strong><code>@Core</code></strong> &mdash; metadati generici di OData: computed, immutable, descrizione.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>Core</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> {
+  ID         <span class="ann">@Core.Computed</span>;          <span class="cmt">// non editabile, valorizzato lato server</span>
+  isbn       <span class="ann">@Core.Immutable</span>;         <span class="cmt">// solo al CREATE, mai update</span>
+  createdAt  <span class="ann">@Core.Computed</span>;
+  cover      <span class="ann">@Core.MediaType</span>: <span class="str">'image/png'</span>;
+  archive    <span class="ann">@Core.IsURL</span>;             <span class="cmt">// renderizza come link</span>
+};
+
+<span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> <span class="ann">@Core.Description</span>: <span class="str">'Master catalog of books'</span>;</code></pre>
+</div>
+    </section>
+
+    <section id="a-9">
+      <h2 data-num="7.9"><code>@requires</code> e <code>@restrict</code>: il modello di sicurezza</h2>
+      <p>
+        CAP integra l'autorizzazione direttamente nelle annotation. Niente middleware esterni, niente
+        decoratori imperativi: descrivi <em>chi pu&ograve; cosa</em> nel modello.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>@requires</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// service-level: solo authenticated user pu&ograve; entrare</span>
+<span class="ann">@(requires</span>: <span class="str">'authenticated-user'</span><span class="ann">)</span>
+<span class="kw">service</span> <span class="type">CatalogService</span> { ... }
+
+<span class="cmt">// service-level: ruoli espliciti</span>
+<span class="ann">@(requires</span>: [ <span class="str">'admin'</span>, <span class="str">'manager'</span> ]<span class="ann">)</span>
+<span class="kw">service</span> <span class="type">AdminService</span> { ... }</code></pre>
+</div>
+      <p>
+        <code>@restrict</code> &egrave; piu&grave; granulare e si applica a entity, azioni, function:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>@restrict</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">BookshopService</span> {
+
+  <span class="ann">@restrict</span>: [
+    { grant: <span class="str">'READ'</span>,   to: <span class="str">'authenticated-user'</span> },
+    { grant: [<span class="str">'CREATE'</span>,<span class="str">'UPDATE'</span>], to: <span class="str">'editor'</span> },
+    { grant: <span class="str">'DELETE'</span>, to: <span class="str">'admin'</span> }
+  ]
+  <span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+
+  <span class="cmt">// restriction con condizione (instance-based authorization)</span>
+  <span class="ann">@restrict</span>: [
+    { grant: <span class="str">'*'</span>, to: <span class="str">'admin'</span> },
+    { grant: <span class="str">'READ'</span>,    to: <span class="str">'user'</span>, <span class="kw">where</span>: <span class="str">'createdBy = $user'</span> },
+    { grant: <span class="str">'UPDATE'</span>,  to: <span class="str">'user'</span>, <span class="kw">where</span>: <span class="str">'createdBy = $user and status != \'approved\''</span> }
+  ]
+  <span class="kw">entity</span> <span class="type">Orders</span> <span class="kw">as projection on</span> db.<span class="type">Orders</span>;
+}</code></pre>
+</div>
+<div class="callout">
+  <div class="callout-label">$user, $now e attributi</div>
+  <p><code>$user</code> &egrave; sempre l'utente corrente. <code>$user.&lt;attr&gt;</code> permette di leggere <em>attributi</em> (tenant, country, dept) dal token IAS/XSUAA. <code>$now</code> &egrave; il timestamp corrente. Con questi tre filtri scrivi regole tipo &laquo;l'utente vede solo i record del proprio paese e creati negli ultimi 30 giorni&raquo; in due righe.</p>
+</div>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>regola istanza dinamica</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="ann">@restrict</span>: [
+  { grant: <span class="str">'READ'</span>, to: <span class="str">'user'</span>,
+    <span class="kw">where</span>: <span class="str">'country_code = $user.country and createdAt &gt; $now - 30'</span> }
+]</code></pre>
+</div>
+    </section>
+
+    <section id="a-10">
+      <h2 data-num="7.10"><code>annotate</code>: separare modello e UI</h2>
+      <p>
+        Un'applicazione CAP matura tiene il modello dati pulito e le annotation UI in <em>file separati</em>.
+        Il keyword <code>annotate</code> permette di aggiungere annotation a entity gi&agrave; definite
+        altrove.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>separation of concerns</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// db/schema.cds — solo modello, nessuna UI</span>
+<span class="kw">entity</span> <span class="type">Books</span> {
+  key ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>(<span class="num">100</span>);
+  price  : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+  author : <span class="kw">Association to</span> <span class="type">Authors</span>;
+}
+
+<span class="cmt">// srv/catalog-service.cds — espone</span>
+<span class="kw">service</span> <span class="type">CatalogService</span> {
+  <span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+}
+
+<span class="cmt">// srv/catalog-ui.cds — solo annotations UI</span>
+<span class="kw">using</span> <span class="type">CatalogService</span> <span class="kw">from</span> <span class="str">'./catalog-service'</span>;
+
+<span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> <span class="ann">@(
+  UI.LineItem</span>: [ ... ],
+  <span class="ann">UI.HeaderInfo</span>: { ... },
+  <span class="ann">UI.Facets</span>: [ ... ]
+);
+
+<span class="kw">annotate</span> <span class="type">CatalogService</span>.<span class="type">Books</span> <span class="kw">with</span> {
+  title <span class="ann">@title</span>: <span class="str">'{i18n&gt;BookTitle}'</span>;
+  price <span class="ann">@title</span>: <span class="str">'{i18n&gt;BookPrice}'</span> <span class="ann">@Measures.ISOCurrency</span>: currency_code;
+};</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">i18n: testi traducibili</div>
+  <p>Tutte le stringhe nell'annotation possono usare il riferimento <code>{i18n&gt;chiave}</code> che punta a file <code>_i18n/i18n.properties</code>, <code>_i18n/i18n_it.properties</code>, ecc. CAP risolve il locale dell'utente automaticamente e serve l'<code>$metadata</code> giusto.</p>
+</div>
+    </section>
+
+    <section id="a-11">
+      <h2 data-num="7.11">Esercizio del capitolo</h2>
+      <p>
+        Su un service <code>BookshopService</code> con entity <code>Books</code>, <code>Authors</code>,
+        <code>Categories</code>, <code>Orders</code>:
+      </p>
+      <ol>
+        <li>Crea un file <code>srv/bookshop-ui.cds</code> separato.</li>
+        <li>Annota <code>Books</code> con <code>UI.LineItem</code> (almeno 5 colonne, 1 con <code>#High</code>), <code>UI.HeaderInfo</code>, <code>UI.Facets</code> con 3 reference facet.</li>
+        <li>Crea 2 <code>UI.FieldGroup</code> e 1 <code>UI.DataPoint</code> per <code>stock</code> visualizzato come progress.</li>
+        <li>Crea 3 <code>UI.SelectionVariant</code> diversi (low stock, in promozione, novit&agrave;).</li>
+        <li>Annota <code>price</code> con <code>@Measures.ISOCurrency</code> e <code>@Common.Label</code>.</li>
+        <li>Crea un <code>@Common.ValueList</code> per il campo <code>author</code>.</li>
+        <li>Aggiungi <code>@restrict</code> con 3 regole: lettura per <code>user</code>, scrittura per <code>editor</code>, delete per <code>admin</code> solo sui record con <code>status = 'draft'</code>.</li>
+        <li>Imposta <code>@Capabilities.DeleteRestrictions: { Deletable: false }</code> sulla projection cliente, ma lascia delete attivo sulla projection admin.</li>
+      </ol>
+<div class="callout callout-tip">
+  <div class="callout-label">Bonus expert</div>
+  <p>Sposta tutte le stringhe in <code>_i18n/i18n.properties</code> e crea la versione italiana <code>_i18n/i18n_it.properties</code>. Verifica con <code>?sap-language=IT</code> nell'URL che cambino i metadati.</p>
+</div>
+    </section>
+
+
+    <nav class="chapter-nav">
+  <a href="ch06-services.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">06 · Services, actions, functions</span>
+  </a>
+  <a href="ch08-cql.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">08 · CQL & CQN</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#a-1" >7.1 · Annotations: il linguaggio meta di CAP</a></li>
+    <li><a href="#a-2" >7.2 · Sintassi: prefissi, vocabolari, $value</a></li>
+    <li><a href="#a-3" >7.3 · @Common: il vocabolario quotidiano</a></li>
+    <li><a href="#a-4" >7.4 · @UI: generare Fiori Elements</a></li>
+    <li><a href="#a-5" >7.5 · LineItem, HeaderInfo, Facets</a></li>
+    <li><a href="#a-6" >7.6 · FieldGroup, DataPoint, Identification</a></li>
+    <li><a href="#a-7" >7.7 · Filtri, ricerca, presentazione</a></li>
+    <li><a href="#a-8" >7.8 · @Measures, @Capabilities, @Core</a></li>
+    <li><a href="#a-9" >7.9 · @requires e @restrict: il modello di sicurezza</a></li>
+    <li><a href="#a-10" >7.10 · annotate: separare modello e UI</a></li>
+    <li><a href="#a-11" >7.11 · Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

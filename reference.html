@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reference — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html" class="active">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout-single">
+  
+  <section class="page-hero">
+    <div class="kicker">Cheatsheet · v.1</div>
+    <h1 class="page-title">La reference, in un colpo solo</h1>
+    <p class="page-lead">Tutto ciò che serve sapere e che sfugge alla memoria: tipi CDS, annotazioni più usate, CQL, CLI, gotcha. La pagina che tieni aperta in un secondo tab mentre programmi.</p>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Tipi primitivi CDS</h2>
+    <p class="ref-intro">Tutti i tipi del linguaggio, con il mapping su HANA, OData, e JavaScript.</p>
+    
+    <table class="data-table">
+      <thead>
+        <tr><th>CDS</th><th>OData V4</th><th>HANA</th><th>JS</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>String</code></td><td>Edm.String</td><td>NVARCHAR(5000)</td><td>string</td><td>Default 5000 senza lunghezza</td></tr>
+        <tr><td><code>String(n)</code></td><td>Edm.String</td><td>NVARCHAR(n)</td><td>string</td><td>n = max 5000</td></tr>
+        <tr><td><code>LargeString</code></td><td>Edm.String</td><td>NCLOB</td><td>string</td><td>fino a 2GB</td></tr>
+        <tr><td><code>Binary(n)</code></td><td>Edm.Binary</td><td>VARBINARY(n)</td><td>Buffer</td><td>—</td></tr>
+        <tr><td><code>LargeBinary</code></td><td>Edm.Binary</td><td>BLOB</td><td>Buffer/Stream</td><td>streaming-friendly</td></tr>
+        <tr><td><code>Boolean</code></td><td>Edm.Boolean</td><td>BOOLEAN</td><td>boolean</td><td>—</td></tr>
+        <tr><td><code>UUID</code></td><td>Edm.Guid</td><td>NVARCHAR(36)</td><td>string</td><td>Auto-generated con <code>cuid</code></td></tr>
+        <tr><td><code>Integer</code></td><td>Edm.Int32</td><td>INTEGER</td><td>number</td><td>—</td></tr>
+        <tr><td><code>Integer64</code></td><td>Edm.Int64</td><td>BIGINT</td><td>BigInt/string</td><td>OData ritorna stringa per precisione</td></tr>
+        <tr><td><code>Int16</code></td><td>Edm.Int16</td><td>SMALLINT</td><td>number</td><td>—</td></tr>
+        <tr><td><code>Decimal</code></td><td>Edm.Decimal</td><td>DECIMAL</td><td>number/string</td><td>Senza precisione: float-like</td></tr>
+        <tr><td><code>Decimal(p,s)</code></td><td>Edm.Decimal</td><td>DECIMAL(p,s)</td><td>string</td><td>Preferito per money</td></tr>
+        <tr><td><code>Double</code></td><td>Edm.Double</td><td>DOUBLE</td><td>number</td><td>—</td></tr>
+        <tr><td><code>Date</code></td><td>Edm.Date</td><td>DATE</td><td>string ISO</td><td>YYYY-MM-DD</td></tr>
+        <tr><td><code>Time</code></td><td>Edm.TimeOfDay</td><td>TIME</td><td>string ISO</td><td>HH:mm:ss</td></tr>
+        <tr><td><code>DateTime</code></td><td>Edm.DateTimeOffset</td><td>SECONDDATE</td><td>string ISO</td><td>Precisione al secondo</td></tr>
+        <tr><td><code>Timestamp</code></td><td>Edm.DateTimeOffset</td><td>TIMESTAMP</td><td>string ISO</td><td>Precisione ai 100ns</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Aspects predefiniti</h2>
+    <p class="ref-intro">Da <code>@sap/cds/common</code>, sempre disponibili.</p>
+    
+    <table class="data-table">
+      <thead><tr><th>Aspect</th><th>Aggiunge</th><th>Quando usarlo</th></tr></thead>
+      <tbody>
+        <tr><td><code>cuid</code></td><td>key ID : UUID</td><td>Default per tutte le entity transazionali</td></tr>
+        <tr><td><code>managed</code></td><td>createdAt, createdBy, modifiedAt, modifiedBy</td><td>Audit base per ogni entity editabile</td></tr>
+        <tr><td><code>temporal</code></td><td>validFrom, validTo (key parziale)</td><td>Quando vuoi versioning storico</td></tr>
+        <tr><td><code>CodeList</code></td><td>name (localized), descr (localized)</td><td>Per code list multilingua</td></tr>
+        <tr><td><code>Countries</code></td><td>CodeList con key code: String(3)</td><td>Lista paesi ISO-3166</td></tr>
+        <tr><td><code>Currencies</code></td><td>CodeList con symbol, key code: String(3)</td><td>ISO-4217</td></tr>
+        <tr><td><code>Languages</code></td><td>CodeList con key code: String(14)</td><td>BCP-47 language tags</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Annotations più usate</h2>
+    
+    <h3 class="ref-subtitle">Persistence (modello dati)</h3>
+    <table class="data-table">
+      <thead><tr><th>Annotazione</th><th>Effetto</th></tr></thead>
+      <tbody>
+        <tr><td><code>@cds.persistence.skip</code></td><td>Entity virtuale, non crea tabella</td></tr>
+        <tr><td><code>@cds.persistence.exists</code></td><td>Tabella/view già esistente su DB, non gestita da CAP</td></tr>
+        <tr><td><code>@cds.persistence.table</code></td><td>Forza una view a essere materializzata come tabella</td></tr>
+        <tr><td><code>@cds.persistence.name</code></td><td>Custom DB name (default: namespace_underscored)</td></tr>
+        <tr><td><code>@cds.persistence.index: [['col1'], ['col2', 'col3']]</code></td><td>Crea indici secondari</td></tr>
+        <tr><td><code>@cds.autoexpose</code></td><td>Espone entity di backing nel service</td></tr>
+        <tr><td><code>@cds.search: { field1, field2 }</code></td><td>Limita la $search agli specifici campi</td></tr>
+      </tbody>
+    </table>
+    
+    <h3 class="ref-subtitle">Vincoli e validation</h3>
+    <table class="data-table">
+      <thead><tr><th>Annotazione</th><th>Effetto</th></tr></thead>
+      <tbody>
+        <tr><td><code>@mandatory</code></td><td>Campo obbligatorio (NOT NULL + check Fiori)</td></tr>
+        <tr><td><code>@readonly</code></td><td>Campo o entity in sola lettura via API</td></tr>
+        <tr><td><code>@insertonly</code></td><td>Entity inseribile ma non modificabile</td></tr>
+        <tr><td><code>@assert.range: [min, max]</code></td><td>Validazione range numerico</td></tr>
+        <tr><td><code>@assert.format: 'regex'</code></td><td>Pattern matching</td></tr>
+        <tr><td><code>@assert.unique: { key: [field1, field2] }</code></td><td>Vincolo unicità composto</td></tr>
+        <tr><td><code>@assert.target</code></td><td>Foreign key constraint (default off)</td></tr>
+      </tbody>
+    </table>
+    
+    <h3 class="ref-subtitle">Security</h3>
+    <table class="data-table">
+      <thead><tr><th>Annotazione</th><th>Effetto</th></tr></thead>
+      <tbody>
+        <tr><td><code>@requires: 'role'</code></td><td>Service o entity richiede ruolo</td></tr>
+        <tr><td><code>@requires: ['r1', 'r2']</code></td><td>OR tra ruoli</td></tr>
+        <tr><td><code>@requires: 'authenticated-user'</code></td><td>Qualsiasi utente autenticato</td></tr>
+        <tr><td><code>@restrict</code></td><td>Permessi granulari per grant/to/where</td></tr>
+        <tr><td><code>@PersonalData.*</code></td><td>GDPR tagging (sensitiveness, retention)</td></tr>
+      </tbody>
+    </table>
+    
+    <h3 class="ref-subtitle">UI (Fiori Elements)</h3>
+    <table class="data-table">
+      <thead><tr><th>Annotazione</th><th>Effetto</th></tr></thead>
+      <tbody>
+        <tr><td><code>@UI.HeaderInfo</code></td><td>Titolo, tipo, descrizione dell'object page</td></tr>
+        <tr><td><code>@UI.LineItem</code></td><td>Colonne tabella List Report</td></tr>
+        <tr><td><code>@UI.SelectionFields</code></td><td>Filtri in alto al List Report</td></tr>
+        <tr><td><code>@UI.Facets</code></td><td>Sezioni / tab dell'Object Page</td></tr>
+        <tr><td><code>@UI.FieldGroup #Name</code></td><td>Gruppo di campi referenziato da Facets</td></tr>
+        <tr><td><code>@UI.Identification</code></td><td>Campi identificativi (header area)</td></tr>
+        <tr><td><code>@UI.DataPoint</code></td><td>KPI (numero singolo con trend)</td></tr>
+        <tr><td><code>@Common.Label</code></td><td>Etichetta campo</td></tr>
+        <tr><td><code>@Common.Text</code></td><td>Testo descrittivo associato a un valore</td></tr>
+        <tr><td><code>@Common.SemanticObject</code></td><td>Link Fiori Launchpad cross-app</td></tr>
+        <tr><td><code>@Measures.Unit</code></td><td>Riferimento al campo unità di misura</td></tr>
+        <tr><td><code>@Measures.ISOCurrency</code></td><td>Riferimento al campo currency</td></tr>
+      </tbody>
+    </table>
+    
+    <h3 class="ref-subtitle">Draft</h3>
+    <table class="data-table">
+      <thead><tr><th>Annotazione</th><th>Effetto</th></tr></thead>
+      <tbody>
+        <tr><td><code>@odata.draft.enabled</code></td><td>Attiva il draft handling sull'entity</td></tr>
+        <tr><td><code>@odata.draft.bypass</code></td><td>Skip draft per certe action</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">CQL — quick reference</h2>
+    
+    <h3 class="ref-subtitle">SELECT</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-lang"><span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span><span>.js</span></div>
+        <button class="code-copy">Copia</button>
+      </div>
+      <pre><code><span class="cmt">// Forma tagged template (più leggibile)</span>
+<span class="kw">await</span> SELECT.from`Books` <span class="kw">where</span> `price &gt; 50` orderBy `title`
+
+<span class="cmt">// Forma fluent (più componibile)</span>
+<span class="kw">await</span> SELECT.from(Books)
+  .columns(<span class="str">'ID'</span>, <span class="str">'title'</span>, <span class="str">'price'</span>)
+  .where({ price: { <span class="str">'&gt;'</span>: <span class="num">50</span> } })
+  .orderBy(<span class="str">'title'</span>)
+  .limit(<span class="num">100</span>, <span class="num">0</span>);
+
+<span class="cmt">// Single row (.one ritorna oggetto, non array)</span>
+<span class="kw">const</span> book = <span class="kw">await</span> SELECT.one.from(Books, { ID: bookId });
+
+<span class="cmt">// Path expression (no JOIN scritto a mano)</span>
+<span class="kw">await</span> SELECT.from(Books).where({ <span class="str">'author.country.code'</span>: <span class="str">'IT'</span> });
+
+<span class="cmt">// Expand (deep read)</span>
+<span class="kw">await</span> SELECT.from(Books).columns(b =&gt; {
+  b<span class="op">.</span><span class="str">'*'</span>, b.author(a =&gt; { a.name, a.country_code }), b.reviews(<span class="str">'*'</span>)
+});
+
+<span class="cmt">// Aggregation</span>
+<span class="kw">await</span> SELECT.from(Books)
+  .columns(<span class="str">'author_ID'</span>, { func: <span class="str">'avg'</span>, args: [<span class="str">'price'</span>], as: <span class="str">'avg'</span> })
+  .groupBy(<span class="str">'author_ID'</span>)
+  .having({ avg: { <span class="str">'&gt;'</span>: <span class="num">20</span> } });</code></pre>
+    </div>
+    
+    <h3 class="ref-subtitle">INSERT / UPDATE / UPSERT / DELETE</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-lang"><span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span><span>.js</span></div>
+        <button class="code-copy">Copia</button>
+      </div>
+      <pre><code><span class="cmt">// INSERT singolo</span>
+<span class="kw">await</span> INSERT.into(Books).entries({ ID: cuid(), title: <span class="str">'X'</span>, price: <span class="num">10</span> });
+
+<span class="cmt">// INSERT bulk</span>
+<span class="kw">await</span> INSERT.into(Books).entries([{ ... }, { ... }, { ... }]);
+
+<span class="cmt">// UPDATE</span>
+<span class="kw">await</span> UPDATE(Books).set({ price: <span class="num">15</span> }).where({ ID: bookId });
+
+<span class="cmt">// UPDATE con espressione</span>
+<span class="kw">await</span> UPDATE(Books, bookId).set({ stock: { <span class="str">'-='</span>: <span class="num">1</span> } });
+
+<span class="cmt">// UPSERT (insert se non esiste, update altrimenti)</span>
+<span class="kw">await</span> UPSERT.into(Books).entries({ ID: bookId, title: <span class="str">'X'</span> });
+
+<span class="cmt">// DELETE</span>
+<span class="kw">await</span> DELETE.from(Books).where({ ID: bookId });
+<span class="kw">await</span> DELETE.from(Books, bookId);  <span class="cmt">// shortcut su key</span></code></pre>
+    </div>
+    
+    <h3 class="ref-subtitle">Operatori where</h3>
+    <table class="data-table">
+      <thead><tr><th>Operatore</th><th>SQL</th><th>Esempio CQL</th></tr></thead>
+      <tbody>
+        <tr><td><code>=</code></td><td>=</td><td><code>{ ID: bookId }</code></td></tr>
+        <tr><td><code>!=</code> / <code>&lt;&gt;</code></td><td>&lt;&gt;</td><td><code>{ price: { '!=': 0 } }</code></td></tr>
+        <tr><td><code>&gt;</code> <code>&lt;</code> <code>&gt;=</code> <code>&lt;=</code></td><td>idem</td><td><code>{ price: { '&gt;': 50 } }</code></td></tr>
+        <tr><td><code>in</code></td><td>IN</td><td><code>{ category: { in: ['A', 'B'] } }</code></td></tr>
+        <tr><td><code>not in</code></td><td>NOT IN</td><td><code>{ category: { 'not in': ['Z'] } }</code></td></tr>
+        <tr><td><code>like</code></td><td>LIKE</td><td><code>{ title: { like: '%CAP%' } }</code></td></tr>
+        <tr><td><code>between</code></td><td>BETWEEN</td><td><code>{ price: { between: [10, 100] } }</code></td></tr>
+        <tr><td><code>is null</code> / <code>is not null</code></td><td>idem</td><td><code>{ author_ID: null }</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">CLI — i comandi che userai ogni giorno</h2>
+    
+    <table class="data-table">
+      <thead><tr><th>Comando</th><th>Cosa fa</th></tr></thead>
+      <tbody>
+        <tr><td><code>cds init &lt;name&gt;</code></td><td>Crea nuovo progetto CAP</td></tr>
+        <tr><td><code>cds watch</code></td><td>Avvia in dev mode, hot reload su modifiche</td></tr>
+        <tr><td><code>cds serve</code></td><td>Avvia il server (production-like)</td></tr>
+        <tr><td><code>cds repl</code></td><td>REPL interattivo, esegui query CQL al volo</td></tr>
+        <tr><td><code>cds deploy</code></td><td>Deploy a SQLite (dev) o HANA con binding</td></tr>
+        <tr><td><code>cds build</code></td><td>Compila per produzione → cartella <code>gen/</code></td></tr>
+        <tr><td><code>cds build --production</code></td><td>Genera artefatti HDI per HANA Cloud</td></tr>
+        <tr><td><code>cds add hana</code></td><td>Aggiunge supporto HANA al progetto</td></tr>
+        <tr><td><code>cds add xsuaa</code></td><td>Aggiunge auth XSUAA</td></tr>
+        <tr><td><code>cds add multitenancy</code></td><td>Attiva il modello multitenant</td></tr>
+        <tr><td><code>cds compile srv</code></td><td>Compila il modello, stampa il CSN</td></tr>
+        <tr><td><code>cds compile srv --to edmx</code></td><td>Genera $metadata OData V4</td></tr>
+        <tr><td><code>cds compile srv --to sql</code></td><td>Genera DDL SQL</td></tr>
+        <tr><td><code>cds bind --to hana</code></td><td>Crea binding con HDI per dev locale → HANA Cloud</td></tr>
+        <tr><td><code>cds env</code></td><td>Stampa l'env config corrente</td></tr>
+        <tr><td><code>cds env requires.db</code></td><td>Stampa solo la config db</td></tr>
+        <tr><td><code>cds env --profile production</code></td><td>Env per profilo specifico</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Eventi runtime — i lifecycle hook</h2>
+    
+    <table class="data-table">
+      <thead><tr><th>Pattern</th><th>Quando si triggera</th></tr></thead>
+      <tbody>
+        <tr><td><code>before('READ', Entity)</code></td><td>Prima di una query di lettura</td></tr>
+        <tr><td><code>on('READ', Entity)</code></td><td>Sostituisce la lettura default (custom DB / external API)</td></tr>
+        <tr><td><code>after('READ', Entity)</code></td><td>Dopo la query, prima della response</td></tr>
+        <tr><td><code>before('CREATE', Entity)</code></td><td>Validation, pre-popolazione campi</td></tr>
+        <tr><td><code>on('CREATE', Entity)</code></td><td>Sostituisce la INSERT default</td></tr>
+        <tr><td><code>after('CREATE', Entity)</code></td><td>Notifiche, emit eventi</td></tr>
+        <tr><td><code>before('UPDATE', Entity)</code></td><td>Validation pre-update</td></tr>
+        <tr><td><code>before('DELETE', Entity)</code></td><td>Check vincoli, soft delete</td></tr>
+        <tr><td><code>on('actionName', ...)</code></td><td>Implementa una bound/unbound action</td></tr>
+        <tr><td><code>before('PATCH', Entity.drafts)</code></td><td>Triggerato ad ogni autosave draft</td></tr>
+        <tr><td><code>before('NEW', Entity.drafts)</code></td><td>Quando si crea il draft (CREATE o EDIT)</td></tr>
+        <tr><td><code>after('draftActivate', Entity)</code></td><td>Dopo che il draft diventa active</td></tr>
+        <tr><td><code>this.emit('eventName', data)</code></td><td>Emette evento (in-process o broker)</td></tr>
+        <tr><td><code>this.on('eventName', handler)</code></td><td>Sottoscrive evento</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Gotcha & best practice</h2>
+    
+    <div class="cheatsheet-grid">
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Naming</div>
+        <p>Le entity tipicamente al <strong>plurale</strong> (<code>Books</code>), gli aspect e i type al <strong>singolare</strong> (<code>Address</code>). I service nel formato PascalCase con suffix <em>-Service</em>.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ UUID</div>
+        <p>Sempre <code>cuid</code> per le entity transazionali. Per code list usa <code>String(n)</code> come key (più leggibile, indicizzabile, fixed-length).</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Path expression</div>
+        <p>Mai scrivere JOIN a mano in CQL. Usa <code>.where('author.country.code', 'IT')</code>: CAP genera il JOIN ottimale e lo pusha a HANA.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Composition vs Association</div>
+        <p><strong>Composition</strong> = padre possiede i figli (cascade delete, deep create). <strong>Association</strong> = puntatore (i record vivono di vita propria).</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Draft validation</div>
+        <p>Validation strict in <code>before('CREATE'/'UPDATE')</code> sull'entity. Validation soft (formato, range) in <code>before('PATCH', Entity.drafts)</code>. Non confondere.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ N+1</div>
+        <p>Mai un loop con SELECT dentro. Sempre <code>columns(b =&gt; b.author('*'))</code> per fare expand. Una sola query, JOIN al DB.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ localized</div>
+        <p>Quando leggi una entity <code>localized</code> usa <code>SELECT.from(localized.Books)</code> per ottenere la traduzione automatica nella lingua dell'utente.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Tx esplicite</div>
+        <p>Per logica multi-step usa <code>cds.tx</code>. Default: tutto in autocommit. Se vuoi rollback su errore di un step, devi avvolgere in transaction.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ @restrict</div>
+        <p>Restrict supporta <code>where</code> con SQL: <code>where: 'owner = $user'</code>. Magic vars: <code>$user</code>, <code>$user.id</code>, <code>$now</code>, <code>$user.locale</code>, <code>$user.&lt;attribute&gt;</code>.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ HDI deploy</div>
+        <p>Su HANA Cloud i deploy avvengono via <em>HDI container</em>. <code>cds deploy</code> in locale, <code>cf deploy</code> con mta.yaml in BTP. Mai mischiarli.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Annotations syntax</div>
+        <p>L'array di annotation accetta sia stringhe semplici sia oggetti. Per UI.LineItem usa sempre oggetti: <code>{ Value: title, Label: 'Title' }</code>.</p>
+      </div>
+      
+      <div class="cheat-card">
+        <div class="cheat-kicker">⚠ Side effects</div>
+        <p>Quando un campo dipende da un altro server-side, dichiara <code>@Common.SideEffects.TargetProperties</code> così il client ricarica al cambiamento.</p>
+      </div>
+      
+    </div>
+  </section>
+  
+  <section class="ref-section">
+    <h2 class="ref-title">Link essenziali</h2>
+    <p class="ref-intro">Le risorse che terrai sempre aperte nei segnalibri.</p>
+    
+    <table class="data-table">
+      <thead><tr><th>Risorsa</th><th>URL</th><th>Quando</th></tr></thead>
+      <tbody>
+        <tr><td>CAP doc ufficiale</td><td>cap.cloud.sap</td><td>Bibbia quotidiana</td></tr>
+        <tr><td>CDS language reference</td><td>cap.cloud.sap/docs/cds</td><td>Sintassi precisa</td></tr>
+        <tr><td>CAP samples</td><td>github.com/SAP-samples/cloud-cap-samples</td><td>Codice reale di riferimento</td></tr>
+        <tr><td>CAP-JS</td><td>github.com/cap-js</td><td>Plugin community Node.js</td></tr>
+        <tr><td>SAP Tutorials Navigator</td><td>developers.sap.com/tutorial-navigator.html</td><td>Tutorial step-by-step</td></tr>
+        <tr><td>OData V4 spec</td><td>docs.oasis-open.org/odata/odata/v4.01</td><td>Per capire i protocollo dietro</td></tr>
+        <tr><td>SAP HANA Cloud docs</td><td>help.sap.com/docs/HANA_CLOUD</td><td>Per il DB-side</td></tr>
+        <tr><td>Discord CAP Community</td><td>discord.gg/sap-cap</td><td>Domande veloci</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <div class="ref-footer">
+    <p>Hai chiuso il viaggio. Ora resta solo una cosa: <strong>scrivere codice</strong>.</p>
+  </div>
+  
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

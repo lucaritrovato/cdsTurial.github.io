@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 10 · Draft, multitenancy, extensibility — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html" class="active"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 10</span>
+      <span>Draft, multitenancy, extensibility</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">10</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 10 · Draft, multitenancy, extensibility</div>
+        <h1 class="chapter-title"><em>L'arte expert:</em><br>draft, multitenancy,<br>extensibility</h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">I capisaldi del livello senior: il modello draft che governa le UI editabili, gli eventi che disaccoppiano i service, la multitenancy che permette di servire N clienti con una sola app, l'extensibility che fa scegliere al cliente cosa estendere. Concludi con performance, observability, test, e il progetto finale che certifica la tua expertise.</p>
+    
+
+    <section id="c-1">
+      <h2 data-num="10.1">Il modello Draft di CAP</h2>
+      <p>Nelle applicazioni enterprise capita continuamente questo scenario: un utente apre un form, compila tre campi su quindici, viene chiamato in riunione, chiude il browser. Domani vuole riprendere da dove aveva lasciato. Senza draft, quei dati sono persi — o peggio, sono già salvati a metà nel database "buono" e qualcun altro ci sta lavorando sopra senza saperlo.</p>
+      <p>Il <strong>Draft Handling</strong> di CAP risolve questo problema in modo dichiarativo: <em>una singola annotazione</em> attiva un meccanismo completo di salvataggio intermedio, locking ottimistico, recovery e attivazione finale. È uno dei feature più potenti dell'intero stack — e uno dei più sottovalutati.</p>
+
+      <p>Il modello concettuale: ogni entity con draft attivo vive in <strong>due stati simultanei</strong>:</p>
+      <ul>
+        <li><strong>Active</strong> — il record "ufficiale" visibile a tutti, persistito nella tabella principale.</li>
+        <li><strong>Draft</strong> — una copia in lavorazione, persistita in una tabella shadow <code>EntityName_drafts</code>, visibile solo all'utente che la sta editando.</li>
+      </ul>
+      <p>L'utente lavora sul draft, lo salva ogni 2 secondi (autosave automatico di Fiori Elements), e quando è pronto fa <em>activate</em>: a quel punto il draft viene "trasferito" sulla active version e cancellato. Se decide di scartare, basta una <em>discard</em>.</p>
+
+      <div class="callout">
+  <div class="callout-label">Perché è importante saperlo bene</div>
+  <p>Se sviluppi con Fiori Elements, il 90% delle entity editabili avranno <code>@odata.draft.enabled</code>. Capire cosa succede sotto è la differenza tra un sviluppatore CAP medio e uno senior. La gran parte dei bug enterprise — locking strani, dati che spariscono, handler che si triggerano due volte — vengono da una comprensione superficiale del draft model.</p>
+</div>
+    </section>
+
+    <section id="c-2">
+      <h2 data-num="10.2">@odata.draft.enabled in dettaglio</h2>
+      <p>L'attivazione è banale:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> AdminBookService <span class="op">@(</span>requires<span class="op">:</span> <span class="str">'admin'</span><span class="op">)</span> <span class="op">{{</span>
+  
+  <span class="ann">@odata.draft.enabled</span>
+  <span class="kw">entity</span> Books <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.Books;
+  
+  <span class="ann">@odata.draft.enabled</span>
+  <span class="kw">entity</span> Authors <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.Authors;
+<span class="op">}}</span></code></pre>
+</div>
+
+      <p>Da questa singola riga CAP deriva automaticamente:</p>
+      <ul>
+        <li>Una tabella shadow <code>AdminBookService_Books_drafts</code> con la stessa struttura più colonne tecniche.</li>
+        <li>Le <strong>bound action</strong> standard: <code>draftEdit</code>, <code>draftActivate</code>, <code>draftPrepare</code>, e l'unbound <code>discardDraft</code>.</li>
+        <li>Una <strong>view di unione</strong> che presenta Books filtrando per utente: ognuno vede i suoi draft + tutti gli active.</li>
+        <li>Locking ottimistico via <code>HasDraftEntity</code>, <code>IsActiveEntity</code>, <code>HasActiveEntity</code> — campi virtuali che il client interroga.</li>
+      </ul>
+
+      <p>Le colonne tecniche aggiunte sulla shadow table:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.sql</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">CREATE TABLE</span> ADMINBOOKSERVICE_BOOKS_DRAFTS (
+  ID            <span class="type">NVARCHAR(36)</span> <span class="kw">NOT NULL</span>,
+  title         <span class="type">NVARCHAR(100)</span>,
+  price         <span class="type">DECIMAL(9,2)</span>,
+  <span class="cmt">-- ... tutti i campi della entity originale ...</span>
+  
+  <span class="cmt">-- Campi tecnici draft</span>
+  DraftAdministrativeData_DraftUUID  <span class="type">NVARCHAR(36)</span>,
+  HasActiveEntity                    <span class="type">BOOLEAN</span>,
+  IsActiveEntity                     <span class="type">BOOLEAN</span>,
+  
+  <span class="kw">PRIMARY KEY</span> (ID, IsActiveEntity)
+);
+
+<span class="kw">CREATE TABLE</span> DRAFTADMINISTRATIVEDATA (
+  DraftUUID          <span class="type">NVARCHAR(36)</span> <span class="kw">PRIMARY KEY</span>,
+  CreationDateTime   <span class="type">TIMESTAMP</span>,
+  CreatedByUser      <span class="type">NVARCHAR(256)</span>,
+  LastChangeDateTime <span class="type">TIMESTAMP</span>,
+  LastChangedByUser  <span class="type">NVARCHAR(256)</span>,
+  DraftIsCreatedByMe <span class="type">BOOLEAN</span>,
+  InProcessByUser    <span class="type">NVARCHAR(256)</span>
+);</code></pre>
+</div>
+
+      <div class="callout callout-warn">
+  <div class="callout-label">PK composita</div>
+  <p>Nota la primary key (ID, IsActiveEntity): è il trucco che permette a draft e active di coesistere con lo stesso ID. Quando attivi il draft, CAP fa una DELETE + INSERT atomica per spostare il record dalla shadow alla active.</p>
+</div>
+    </section>
+
+    <section id="c-3">
+      <h2 data-num="10.3">Lifecycle dei draft</h2>
+      <p>Il ciclo di vita completo di un draft, visto dal punto di vista del client OData:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.http</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># 1. CREATE: nasce direttamente come draft</span>
+<span class="kw">POST</span> /admin/Books
+<span class="ann">Content-Type</span>: application/json
+
+<span class="op">{{</span> <span class="str">"title"</span>: <span class="str">"In lavorazione"</span> <span class="op">}}</span>
+
+<span class="cmt"># Response: ritorna l'entity con IsActiveEntity=false</span>
+<span class="op">{{</span>
+  <span class="str">"ID"</span>: <span class="str">"abc-123"</span>,
+  <span class="str">"title"</span>: <span class="str">"In lavorazione"</span>,
+  <span class="str">"IsActiveEntity"</span>: false,
+  <span class="str">"HasActiveEntity"</span>: false,
+  <span class="str">"HasDraftEntity"</span>: false
+<span class="op">}}</span>
+
+<span class="cmt"># 2. PATCH: ogni 2 secondi, autosave</span>
+<span class="kw">PATCH</span> /admin/Books(ID=abc-123,IsActiveEntity=false)
+<span class="op">{{</span> <span class="str">"price"</span>: <span class="num">29.90</span> <span class="op">}}</span>
+
+<span class="cmt"># 3. EDIT: voglio editare un record già active</span>
+<span class="kw">POST</span> /admin/Books(ID=xyz-789,IsActiveEntity=true)/AdminBookService.draftEdit
+<span class="cmt"># Crea un draft a partire dall'active, mantiene l'ID</span>
+
+<span class="cmt"># 4. ACTIVATE: trasferisce draft → active</span>
+<span class="kw">POST</span> /admin/Books(ID=abc-123,IsActiveEntity=false)/AdminBookService.draftActivate
+
+<span class="cmt"># 5. DISCARD: butta via il draft</span>
+<span class="kw">POST</span> /admin/Books(ID=abc-123,IsActiveEntity=false)/AdminBookService.draftDiscard</code></pre>
+</div>
+
+      <p>Tre punti critici da memorizzare:</p>
+      <ol>
+        <li><strong>CREATE in draft mode</strong>: in una entity draft-enabled, una POST non crea direttamente l'active version — crea un draft. L'active esiste solo dopo activate. Questo cambia tutta la semantica dei tuoi <code>before('CREATE')</code> handler.</li>
+        <li><strong>Locking automatico</strong>: quando un utente prende un draft (via edit o create), CAP segna <code>InProcessByUser</code>. Per default il lock dura 15 minuti dall'ultima modifica, configurabile via <code>cds.drafts.cancellationTimeout</code>.</li>
+        <li><strong>Garbage collection</strong>: i draft "abbandonati" vengono cancellati dopo un periodo configurabile (default 30 giorni). Esiste un job periodico <code>cds.drafts.deletionTimeout</code>.</li>
+      </ol>
+
+      <div class="callout callout-tip">
+  <div class="callout-label">Disabilitare il locking</div>
+  <p>In rari casi (es. user collaboration su stesso draft) puoi disabilitare il check con l'annotation <code>@Common.DraftRoot.PreparationAction</code> custom. Ma 9 volte su 10 il locking è quello che vuoi: previene corruzione dati.</p>
+</div>
+    </section>
+
+    <section id="c-4">
+      <h2 data-num="10.4">Custom handlers per draft</h2>
+      <p>Qui sta la trappola: nei tuoi handler devi distinguere se stai operando su draft o su active. CAP introduce eventi specifici per i draft:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">const</span> cds <span class="op">=</span> <span class="fn">require</span>(<span class="str">'@sap/cds'</span>);
+
+module.exports <span class="op">=</span> cds.service.<span class="fn">impl</span>(<span class="kw">async function</span>() <span class="op">{{</span>
+  <span class="kw">const</span> <span class="op">{{</span> Books <span class="op">}}</span> <span class="op">=</span> <span class="kw">this</span>.entities;
+
+  <span class="cmt">// ✓ Triggerato SOLO sul draft, ad ogni autosave</span>
+  <span class="kw">this</span>.before(<span class="str">'PATCH'</span>, Books.drafts, <span class="kw">async</span> req <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="cmt">// Validation in-progress, su dati ancora incompleti</span>
+    <span class="kw">if</span> (req.data.price <span class="op">&amp;&amp;</span> req.data.price <span class="op">&lt;</span> <span class="num">0</span>) <span class="op">{{</span>
+      req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Price cannot be negative'</span>, <span class="str">'price'</span>);
+    <span class="op">}}</span>
+  <span class="op">}});</span>
+
+  <span class="cmt">// ✓ Triggerato quando l'utente clicca "Save" (activate)</span>
+  <span class="cmt">// Qui i dati DEVONO essere completi e validi</span>
+  <span class="kw">this</span>.before(<span class="str">'CREATE'</span>, Books, <span class="kw">async</span> req <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="cmt">// Questo si triggera sulla activation, NON sulla creation iniziale</span>
+    <span class="kw">if</span> (<span class="op">!</span>req.data.title) <span class="op">{{</span>
+      req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Title is mandatory'</span>);
+    <span class="op">}}</span>
+    <span class="kw">if</span> (req.data.price <span class="op">&lt;=</span> <span class="num">0</span>) <span class="op">{{</span>
+      req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Price must be positive'</span>);
+    <span class="op">}}</span>
+  <span class="op">}});</span>
+
+  <span class="cmt">// ✓ Quando l'utente clicca "Edit" su un record esistente</span>
+  <span class="kw">this</span>.before(<span class="str">'NEW'</span>, Books.drafts, <span class="kw">async</span> req <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="cmt">// Pre-popolazione campi tecnici</span>
+    req.data.lastEditor <span class="op">=</span> req.user.id;
+  <span class="op">}});</span>
+
+  <span class="cmt">// ✓ Sull'attivazione: hook custom dopo che il draft diventa active</span>
+  <span class="kw">this</span>.after(<span class="str">'draftActivate'</span>, Books, <span class="kw">async</span> (data, req) <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">emit</span>(<span class="str">'BookPublished'</span>, <span class="op">{{</span> ID: data.ID <span class="op">}});</span>
+  <span class="op">}});</span>
+<span class="op">}});</span></code></pre>
+</div>
+
+      <div class="callout callout-danger">
+  <div class="callout-label">Errore comune: validation nel posto sbagliato</div>
+  <p>Se metti la validazione obbligatoria di <code>title</code> in <code>before('PATCH', Books.drafts)</code>, l'utente NON potrà mai salvare il draft finché non avrà compilato title — ma l'autosave gira ogni 2 secondi! Risultato: errori a raffica sullo schermo. Le validation strict vanno in <code>before('CREATE')</code> e <code>before('UPDATE')</code> sull'entity active (cioè all'activate). Solo i check di formato leggeri (es. range numerici) vanno sul draft.</p>
+</div>
+
+      <p>Una tabella per non confondersi mai:</p>
+      <table class="data-table">
+        <thead><tr><th>Evento</th><th>Quando</th><th>Cosa metterci</th></tr></thead>
+        <tbody>
+          <tr><td><code>NEW</code> su <code>.drafts</code></td><td>Click su "Create" o "Edit"</td><td>Pre-popolazione default</td></tr>
+          <tr><td><code>PATCH</code> su <code>.drafts</code></td><td>Autosave (ogni 2s)</td><td>Validation soft, calcoli intermedi</td></tr>
+          <tr><td><code>CREATE</code> su entity</td><td>Click su "Save" (activate da nuovo)</td><td>Validation strict, business rules</td></tr>
+          <tr><td><code>UPDATE</code> su entity</td><td>Click su "Save" (activate da edit)</td><td>Validation strict su update</td></tr>
+          <tr><td><code>CANCEL</code></td><td>Click su "Cancel" / discard</td><td>Cleanup risorse esterne</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="c-5">
+      <h2 data-num="10.5">Eventi e messaging</h2>
+      <p>CAP ha un sistema di eventi di prima classe. Puoi <strong>dichiarare</strong> eventi nel modello, <strong>emetterli</strong> dal codice, <strong>sottoscriverli</strong> in altri service — e tutto questo funziona in-process oppure attraverso un broker (Event Mesh, Kafka, Redis) senza cambiare il codice.</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> CatalogService <span class="op">{{</span>
+  
+  <span class="kw">entity</span> Books <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.Books;
+  
+  <span class="cmt">// Eventi dichiarati</span>
+  <span class="kw">event</span> BookOrdered <span class="op">{{</span>
+    book     : Books:ID;
+    quantity : Integer;
+    customer : String;
+    timestamp: Timestamp;
+  <span class="op">}}</span>
+  
+  <span class="kw">event</span> StockDepleted <span class="op">{{</span>
+    book     : Books:ID;
+    title    : String;
+  <span class="op">}}</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// srv/catalog-service.js — emit</span>
+<span class="kw">this</span>.on(<span class="str">'submitOrder'</span>, <span class="kw">async</span> req <span class="op">=&gt;</span> <span class="op">{{</span>
+  <span class="kw">const</span> <span class="op">{{</span> book, quantity <span class="op">}}</span> <span class="op">=</span> req.data;
+  
+  <span class="kw">const</span> book_row <span class="op">=</span> <span class="kw">await</span> SELECT.one.from(Books, book);
+  <span class="kw">if</span> (book_row.stock <span class="op">&lt;</span> quantity) req.<span class="fn">reject</span>(<span class="num">400</span>, <span class="str">'Out of stock'</span>);
+  
+  <span class="kw">await</span> UPDATE(Books, book).set(<span class="op">{{</span> stock: <span class="op">{{</span> <span class="str">'-='</span>: quantity <span class="op">}}</span> <span class="op">}});</span>
+  
+  <span class="cmt">// Emit dopo l'update</span>
+  <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">emit</span>(<span class="str">'BookOrdered'</span>, <span class="op">{{</span>
+    book, quantity,
+    customer: req.user.id,
+    timestamp: <span class="kw">new</span> <span class="fn">Date</span>()
+  <span class="op">}});</span>
+  
+  <span class="kw">const</span> updated <span class="op">=</span> <span class="kw">await</span> SELECT.one.from(Books, book);
+  <span class="kw">if</span> (updated.stock <span class="op">===</span> <span class="num">0</span>) <span class="op">{{</span>
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">emit</span>(<span class="str">'StockDepleted'</span>, <span class="op">{{</span> book, title: updated.title <span class="op">}});</span>
+  <span class="op">}}</span>
+<span class="op">}});</span>
+
+<span class="cmt">// Subscribe nello stesso o altro service</span>
+<span class="kw">this</span>.on(<span class="str">'BookOrdered'</span>, <span class="kw">async</span> msg <span class="op">=&gt;</span> <span class="op">{{</span>
+  console.<span class="fn">log</span>(<span class="str">`Book ordered:`</span>, msg.data);
+  <span class="cmt">// Es. log audit, invia email, aggiorna analytics...</span>
+<span class="op">}});</span>
+
+<span class="cmt">// Subscribe cross-service</span>
+<span class="kw">const</span> catalog <span class="op">=</span> <span class="kw">await</span> cds.connect.to(<span class="str">'CatalogService'</span>);
+catalog.on(<span class="str">'StockDepleted'</span>, <span class="kw">async</span> msg <span class="op">=&gt;</span> <span class="op">{{</span>
+  <span class="cmt">// Trigger riassortimento automatico</span>
+  <span class="kw">await</span> <span class="fn">triggerReorder</span>(msg.data.book);
+<span class="op">}});</span></code></pre>
+</div>
+
+      <div class="callout">
+  <div class="callout-label">In-process vs broker</div>
+  <p>Per default gli eventi sono in-process (sync, stesso ciclo di vita della request). Quando colleghi un broker (vedi sotto) diventano asincroni e cross-service. Il codice resta identico: cambia solo la configurazione.</p>
+</div>
+    </section>
+
+    <section id="c-6">
+      <h2 data-num="10.6">SAP Event Mesh & Kafka</h2>
+      <p>Per andare oltre il singolo processo, CAP supporta nativamente tre broker:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.json</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// package.json — configurazione per profilo</span>
+<span class="op">{{</span>
+  <span class="str">"cds"</span>: <span class="op">{{</span>
+    <span class="str">"requires"</span>: <span class="op">{{</span>
+      <span class="str">"messaging"</span>: <span class="op">{{</span>
+        <span class="str">"[development]"</span>: <span class="op">{{</span> <span class="str">"kind"</span>: <span class="str">"file-based-messaging"</span> <span class="op">}}</span>,
+        <span class="str">"[production]"</span>:  <span class="op">{{</span> <span class="str">"kind"</span>: <span class="str">"enterprise-messaging"</span> <span class="op">}}</span>,
+        <span class="str">"[kafka]"</span>:       <span class="op">{{</span> <span class="str">"kind"</span>: <span class="str">"kafka"</span> <span class="op">}}</span>
+      <span class="op">}}</span>
+    <span class="op">}}</span>
+  <span class="op">}}</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <p>I tre kind disponibili:</p>
+      <ul>
+        <li><strong>local-messaging</strong> — default, in-process, una sola istanza.</li>
+        <li><strong>file-based-messaging</strong> — sviluppo, fa partire un file watcher così più istanze locali si vedono.</li>
+        <li><strong>enterprise-messaging</strong> — SAP Event Mesh, binding via service key BTP.</li>
+        <li><strong>enterprise-messaging-shared</strong> — Event Mesh con topic shared.</li>
+        <li><strong>redis</strong> — broker Redis Streams.</li>
+        <li><strong>kafka</strong> — Apache Kafka (via <code>@sap/cds-mbx-kafka</code> o equivalente).</li>
+      </ul>
+
+      <p>Topic naming convention per Event Mesh (rispetta CloudEvents):</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>text</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>&lt;namespace&gt;/&lt;service&gt;/&lt;event&gt;
+
+Esempio:
+acme.bookshop/CatalogService/BookOrdered
+acme.bookshop/CatalogService/StockDepleted</code></pre>
+</div>
+
+      <div class="callout callout-tip">
+  <div class="callout-label">CloudEvents compliant</div>
+  <p>I messaggi emessi da CAP rispettano lo standard <a href='https://cloudevents.io'>CloudEvents</a>: questo significa che possono essere consumati da qualsiasi altro sistema che parla CloudEvents (Kyma, Knative, Azure Event Grid, ecc.) senza adapter custom.</p>
+</div>
+    </section>
+
+    <section id="c-7">
+      <h2 data-num="10.7">Multitenancy: il modello mentale</h2>
+      <p>Multitenancy in CAP non è un "feature" da attivare casualmente: è una decisione architetturale che cambia tutto. Prima di scriverla una sola riga, devi capire i modelli:</p>
+
+      <ul>
+        <li><strong>Single-tenant</strong> — una sola applicazione, un solo set di utenti, un solo database. Default di <code>cds init</code>.</li>
+        <li><strong>Multi-tenant shared database</strong> — un'unica istanza dell'app serve N clienti, tutti i dati in un unico DB con colonna <code>tenant</code> che discrimina. Semplice ma rischioso: una query mal scritta espone dati cross-tenant.</li>
+        <li><strong>Multi-tenant separate schemas</strong> — il modello SAP CAP "ufficiale". Ogni tenant ha il suo schema HDI completo, completamente isolato. Una sola applicazione, ma N container HDI. Questo è quello che ottieni con <code>cds add multitenancy</code>.</li>
+        <li><strong>Multi-instance</strong> — un'istanza app + un DB separato per tenant. Massima isolazione ma costoso. Si usa per casi enterprise pesanti.</li>
+      </ul>
+
+      <p>SAP CAP implementa il modello <strong>separate schemas</strong>: un'unica applicazione (Node.js, K8s pod) gestisce tutti i tenant, ma ogni tenant ha il suo HDI container HANA dedicato. Il routing per tenant avviene via <em>subdomain</em> o <em>JWT claim</em>.</p>
+
+      <div class="callout callout-warn">
+  <div class="callout-label">Onboarding costoso</div>
+  <p>L'onboarding di un nuovo tenant in modello separate schemas crea un nuovo HDI container e ci deploya tutto lo schema. È un'operazione asincrona che dura 30-90 secondi e costa risorse HANA. Non è qualcosa da fare per ogni utente: tipicamente "tenant" = "organizzazione cliente".</p>
+</div>
+    </section>
+
+    <section id="c-8">
+      <h2 data-num="10.8">@sap/cds-mtxs in pratica</h2>
+      <p>Il pacchetto <code>@sap/cds-mtxs</code> (Multi-Tenancy and Extensibility Services) è il modulo che orchestra tutto. Aggiunta:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.bash</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>cds add multitenancy
+
+<span class="cmt"># Equivalente a:</span>
+npm i @sap/cds-mtxs
+cds add xsuaa,approuter --for production</code></pre>
+</div>
+
+      <p>Cosa cambia nel progetto:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.yaml</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># mta.yaml estratto</span>
+modules:
+  - <span class="kw">name</span>: bookshop-srv
+    <span class="kw">type</span>: nodejs
+    <span class="kw">requires</span>:
+      - <span class="kw">name</span>: bookshop-uaa        <span class="cmt"># auth + tenant routing</span>
+      - <span class="kw">name</span>: bookshop-registry   <span class="cmt"># SaaS registry</span>
+      - <span class="kw">name</span>: bookshop-service-manager  <span class="cmt"># HDI per tenant</span>
+      
+  - <span class="kw">name</span>: bookshop-mtx
+    <span class="kw">type</span>: nodejs
+    <span class="kw">path</span>: gen/mtx/sidecar
+    <span class="cmt"># Microservizio sidecar per provisioning tenant</span>
+    
+resources:
+  - <span class="kw">name</span>: bookshop-service-manager
+    <span class="kw">type</span>: org.cloudfoundry.managed-service
+    <span class="kw">parameters</span>:
+      <span class="kw">service</span>: service-manager
+      <span class="kw">service-plan</span>: container</code></pre>
+</div>
+
+      <p>Il modello runtime: ogni request HTTP arriva con un JWT che contiene il <code>tenant ID</code>. CAP usa quel tenant per scegliere quale HDI container interrogare, in modo trasparente. I tuoi handler vedono <code>req.tenant</code> ma nei <code>SELECT</code>, <code>INSERT</code> ecc. non devi mai mettere il filtro: lo fa la connection pool.</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Nei handler, accesso al tenant</span>
+<span class="kw">this</span>.before(<span class="str">'CREATE'</span>, Books, <span class="kw">async</span> req <span class="op">=&gt;</span> <span class="op">{{</span>
+  console.<span class="fn">log</span>(<span class="str">`Creating book for tenant: ${{req.tenant}}`</span>);
+  <span class="cmt">// La query userà automaticamente il pool del tenant corretto</span>
+  <span class="kw">await</span> SELECT.from(Books); <span class="cmt">// → HDI container del tenant T</span>
+<span class="op">}});</span>
+
+<span class="cmt">// Operazioni cross-tenant: solo con super-user</span>
+<span class="kw">await</span> cds.tx(<span class="op">{{</span> tenant: <span class="str">'tenant-A'</span> <span class="op">}}</span>, <span class="kw">async</span> tx <span class="op">=&gt;</span> <span class="op">{{</span>
+  <span class="kw">await</span> tx.<span class="fn">run</span>(SELECT.from(Books));
+<span class="op">}});</span></code></pre>
+</div>
+
+      <div class="callout">
+  <div class="callout-label">MTX sidecar</div>
+  <p>Il sidecar <code>bookshop-mtx</code> è un microservizio dedicato che espone gli endpoint /-/cds/saas-provisioning e /-/cds/extensibility. Serve a separare le operazioni "di sistema" (provisioning tenant, deploy estensioni) dalle operazioni di business: così l'app principale non si blocca su un onboarding lungo.</p>
+</div>
+    </section>
+
+    <section id="c-9">
+      <h2 data-num="10.9">Extensibility: estendere modelli</h2>
+      <p>Multitenancy apre la porta a una feature ancora più potente: <strong>extensibility</strong>. Ogni tenant può estendere il modello dati dell'applicazione (aggiungere campi, entity, view custom) senza toccare il codice sorgente dell'app.</p>
+
+      <p>Caso d'uso classico: vendi una SaaS B2B. Il cliente Tenant-A vuole aggiungere un campo <code>customerSegment</code> a <code>Customers</code>, il cliente Tenant-B vuole una nuova entity <code>LoyaltyProgram</code>. Senza extensibility, dovresti fare branching o aggiungere tutti i campi e disabilitarli — un incubo. Con extensibility, ognuno estende il suo schema in isolamento.</p>
+
+      <p>Sintassi delle estensioni tenant-side:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// extension.cds nel tenant A</span>
+<span class="kw">using</span> CatalogService <span class="kw">from</span> <span class="str">'bookshop'</span>;
+
+<span class="kw">extend</span> CatalogService.Books <span class="kw">with</span> <span class="op">{{</span>
+  customerSegment : String(20);
+  internalNotes   : String(500);
+<span class="op">}}</span>
+
+<span class="kw">extend</span> CatalogService <span class="kw">with</span> <span class="op">{{</span>
+  <span class="kw">entity</span> LoyaltyProgram <span class="op">{{</span>
+    key ID    : UUID;
+    name      : String;
+    threshold : Integer;
+  <span class="op">}}</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <p>Deploy dell'estensione tramite API MTX:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.http</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">PUT</span> /-/cds/extensibility/Extensions
+<span class="ann">Content-Type</span>: application/json
+<span class="ann">Authorization</span>: Bearer &lt;admin-token-tenant-A&gt;
+
+<span class="op">{{</span>
+  <span class="str">"extensions"</span>: <span class="op">[{{</span>
+    <span class="str">"name"</span>: <span class="str">"customerSegmentExt"</span>,
+    <span class="str">"content"</span>: <span class="str">"extend CatalogService.Books with { customerSegment: String(20); }"</span>
+  <span class="op">}}]</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <p>Dietro le quinte CAP compila l'estensione, applica un ALTER TABLE allo schema HDI del tenant, ricarica i metadati per quella tenant: tutti i campi nuovi diventano immediatamente disponibili via OData. Il tenant B continua a non vederli.</p>
+
+      <div class="callout callout-danger">
+  <div class="callout-label">Cosa NON si può estendere</div>
+  <p>Per ragioni di sicurezza e stabilità, da un'estensione tenant-side NON puoi: scrivere custom handler in JavaScript, modificare service path, rimuovere campi del modello base, cambiare le primary key. Le estensioni sono <em>additive</em>, mai distruttive.</p>
+</div>
+
+      <p>Per consentire estensioni mirate (e bloccare quelle problematiche), il provider può annotare il modello base:</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="ann">@extensible</span>
+<span class="kw">entity</span> Books <span class="op">{{</span>
+  key ID    : UUID;
+  title     : String;
+  
+  <span class="ann">@extensible: false</span>  <span class="cmt">// vietato estendere questo campo</span>
+  price     : Decimal;
+<span class="op">}}</span>
+
+<span class="cmt">// Limitazioni granulari</span>
+<span class="ann">@extensible: { fields: 10, fieldNames: ['custom_*'] }</span>
+<span class="kw">entity</span> Orders <span class="op">{{</span> ... <span class="op">}}</span>
+<span class="cmt">// Max 10 campi aggiunti, nomi devono iniziare con custom_</span></code></pre>
+</div>
+    </section>
+
+    <section id="c-10">
+      <h2 data-num="10.10">Feature toggles</h2>
+      <p>Il feature toggle è un meccanismo per attivare/disattivare porzioni del modello a runtime per certe tenant o certi utenti, senza redeploy. Caso classico: vuoi lanciare una nuova feature in beta su 3 tenant, poi rolloutare al 50%, poi al 100%.</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Modello con feature toggle</span>
+<span class="kw">service</span> CatalogService <span class="op">{{</span>
+  <span class="kw">entity</span> Books <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.Books;
+  
+  <span class="ann">@requires.feature: 'ai-recommendations'</span>
+  <span class="kw">function</span> getAIRecommendations(userId: String) <span class="kw">returns</span> <span class="kw">array of</span> Books;
+  
+  <span class="ann">@requires.feature: 'advanced-search'</span>
+  <span class="kw">entity</span> SearchableBooks <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> Books;
+<span class="op">}}</span></code></pre>
+</div>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.json</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// package.json — toggle config</span>
+<span class="op">{{</span>
+  <span class="str">"cds"</span>: <span class="op">{{</span>
+    <span class="str">"features"</span>: <span class="op">{{</span>
+      <span class="str">"ai-recommendations"</span>: <span class="op">{{</span> <span class="str">"enabled"</span>: false <span class="op">}}</span>,
+      <span class="str">"advanced-search"</span>: <span class="op">{{</span> <span class="str">"enabled"</span>: true <span class="op">}}</span>
+    <span class="op">}}</span>
+  <span class="op">}}</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <p>Override per tenant via API:</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.http</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">PATCH</span> /-/cds/saas-provisioning/tenant/tenant-A
+<span class="op">{{</span> <span class="str">"features"</span>: <span class="op">[</span><span class="str">"ai-recommendations"</span>, <span class="str">"advanced-search"</span><span class="op">]</span> <span class="op">}}</span></code></pre>
+</div>
+
+      <div class="callout callout-tip">
+  <div class="callout-label">Quando usarli</div>
+  <p>Feature toggle ≠ extensibility. Feature toggle è per il <em>provider</em>: tu sviluppi una feature, la flagghi, la attivi gradualmente. Extensibility è per il <em>tenant</em>: il cliente personalizza il suo schema. Spesso si combinano: il provider attiva la feature "custom-fields" via toggle, dopo di che il tenant può davvero estendere lo schema.</p>
+</div>
+    </section>
+
+    <section id="c-11">
+      <h2 data-num="10.11">Performance tuning: l'arsenale completo</h2>
+      <p>A questo punto della tua carriera CDS devi smettere di scrivere codice "che funziona" e iniziare a scrivere codice "che scala". Ecco l'arsenale completo:</p>
+
+      <h3>1. Pushdown è tutto</h3>
+      <p>La regola d'oro: <strong>fai elaborare ad HANA, non a Node.js</strong>. Una query CQL ben scritta viene pushed-down al DB; una query "smontata" in Node con loop diventa N+1 query.</p>
+
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// ❌ ANTIPATTERN: N+1 (1 query Books + N query Authors)</span>
+<span class="kw">const</span> books <span class="op">=</span> <span class="kw">await</span> SELECT.from(Books);
+<span class="kw">for</span> (<span class="kw">const</span> b <span class="kw">of</span> books) <span class="op">{{</span>
+  b.author <span class="op">=</span> <span class="kw">await</span> SELECT.one.from(Authors, b.author_ID);
+<span class="op">}}</span>
+
+<span class="cmt">// ✓ CORRETTO: 1 sola query con expand</span>
+<span class="kw">const</span> books <span class="op">=</span> <span class="kw">await</span> SELECT.from(Books).columns(b <span class="op">=&gt;</span> <span class="op">{{</span>
+  b<span class="op">.</span><span class="str">'*'</span>, b.author(a <span class="op">=&gt;</span> <span class="op">{{</span> a.name <span class="op">}}</span>)
+<span class="op">}});</span></code></pre>
+</div>
+
+      <h3>2. Indici via annotazione</h3>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="ann">@cds.persistence.index: [['title'], ['author_ID', 'year']]</span>
+<span class="kw">entity</span> Books <span class="op">{{</span> ... <span class="op">}}</span>
+
+<span class="cmt">// Genera due CREATE INDEX nello schema HDI</span></code></pre>
+</div>
+
+      <h3>3. Pagination obbligatoria</h3>
+      <p>Per default Fiori Elements pagina a 100. Ma se chiami SELECT.from da codice, ottieni TUTTO. Su tabelle grandi è suicidio.</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Sempre con limit + offset su dataset potenzialmente grandi</span>
+<span class="kw">const</span> page <span class="op">=</span> <span class="kw">await</span> SELECT.from(Books).<span class="fn">limit</span>(<span class="num">100</span>, <span class="num">200</span>);
+<span class="cmt">// Oppure cursor-based per dataset enormi</span>
+<span class="kw">const</span> chunk <span class="op">=</span> <span class="kw">await</span> SELECT.from(Books)
+  .where(<span class="op">{{</span> ID: <span class="op">{{</span> <span class="str">'&gt;'</span>: lastId <span class="op">}}</span> <span class="op">}})</span>
+  .orderBy(<span class="str">'ID'</span>).<span class="fn">limit</span>(<span class="num">100</span>);</code></pre>
+</div>
+
+      <h3>4. Calcoli pesanti → Calculation View HANA</h3>
+      <p>Se hai analytics aggregate complesse (rollup, partition, finestre temporali), non scrivere SELECT giganti in CDS. Costruisci una Calculation View nativa HANA e la includi via <code>@cds.persistence.exists</code>. È 10-100× più veloce e fa pieno uso dell'engine columnar.</p>
+
+      <h3>5. Connection pooling</h3>
+      <p>HANA Cloud ha limiti di connessioni. Configura il pool in modo realistico:</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.json</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// .cdsrc.json</span>
+<span class="op">{{</span>
+  <span class="str">"requires"</span>: <span class="op">{{</span>
+    <span class="str">"db"</span>: <span class="op">{{</span>
+      <span class="str">"kind"</span>: <span class="str">"hana"</span>,
+      <span class="str">"pool"</span>: <span class="op">{{</span>
+        <span class="str">"max"</span>: <span class="num">10</span>,
+        <span class="str">"min"</span>: <span class="num">2</span>,
+        <span class="str">"acquireTimeoutMillis"</span>: <span class="num">3000</span>,
+        <span class="str">"idleTimeoutMillis"</span>: <span class="num">30000</span>
+      <span class="op">}}</span>
+    <span class="op">}}</span>
+  <span class="op">}}</span>
+<span class="op">}}</span></code></pre>
+</div>
+
+      <h3>6. $apply per analytics</h3>
+      <p>Se il client (Fiori UI5 Analytical Table, SAC, Excel) supporta <code>$apply</code>, CAP pusha l'intero pipeline analitico al DB. Non c'è bisogno di scrivere endpoint custom: <code>$apply=groupby((country),aggregate(revenue with sum as totalRevenue))</code> diventa una vera GROUP BY HANA.</p>
+    </section>
+
+    <section id="c-12">
+      <h2 data-num="10.12">Observability: log, trace, metrics</h2>
+      <p>Per gestire un'app CAP in produzione devi vederla.</p>
+
+      <h3>Logging strutturato</h3>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">const</span> LOG <span class="op">=</span> cds.<span class="fn">log</span>(<span class="str">'catalog-service'</span>);
+
+LOG.<span class="fn">info</span>(<span class="str">'Book ordered'</span>, <span class="op">{{</span> book: bookId, qty <span class="op">}});</span>
+LOG.<span class="fn">warn</span>(<span class="str">'Low stock'</span>, <span class="op">{{</span> book: bookId, stock <span class="op">}});</span>
+LOG.<span class="fn">error</span>(<span class="str">'Order failed'</span>, err);
+
+<span class="cmt">// Configurazione livelli per profilo</span>
+<span class="cmt">// .cdsrc.json</span>
+<span class="cmt">// "log": { "service": "info", "db": "warn" }</span></code></pre>
+</div>
+
+      <h3>Tracing distribuito</h3>
+      <p>CAP supporta <strong>OpenTelemetry</strong> out-of-the-box. Ogni request HTTP, ogni query DB, ogni emit di evento diventa uno span con traceId propagato. Tu lo attivi così:</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.bash</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>npm i @cap-js/telemetry
+
+<span class="cmt"># .cdsrc.json</span>
+<span class="cmt"># "requires": { "telemetry": true }</span>
+
+<span class="cmt"># Variabili env per export OTLP</span>
+<span class="kw">export</span> OTEL_EXPORTER_OTLP_ENDPOINT=https://otel-collector:4318
+<span class="kw">export</span> OTEL_SERVICE_NAME=bookshop-srv</code></pre>
+</div>
+
+      <h3>Metriche e health-check</h3>
+      <p>CAP espone automaticamente:</p>
+      <ul>
+        <li><code>/health</code> — liveness probe (200 = up)</li>
+        <li><code>/ready</code> — readiness (DB raggiungibile, MTX sidecar attivo, ecc.)</li>
+        <li>Metriche Prometheus opzionali via <code>@cap-js/telemetry</code></li>
+      </ul>
+
+      <div class="callout">
+  <div class="callout-label">Logging in HANA Cloud</div>
+  <p>Su BTP/Cloud Foundry i log finiscono nell'Application Logging service o nel Cloud Logging Service (Loki-backed). Su Kyma vai su un OTEL collector centrale. La cosa importante è sempre lo stesso: <strong>structured logging</strong>, mai concatenazioni stringa. Il traceId è la chiave per debuggare un problema cross-service.</p>
+</div>
+    </section>
+
+    <section id="c-13">
+      <h2 data-num="10.13">Test strategy</h2>
+      <p>Un'app CAP enterprise senza test è un'app rotta che non sai dov'è rotta. Tre livelli di test:</p>
+
+      <h3>1. Unit test sui handler</h3>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// test/unit/catalog.test.js — usando vitest o jest</span>
+<span class="kw">const</span> cds <span class="op">=</span> <span class="fn">require</span>(<span class="str">'@sap/cds'</span>);
+<span class="kw">const</span> <span class="op">{{</span> expect <span class="op">}}</span> <span class="op">=</span> cds.test(<span class="str">'serve'</span>, <span class="str">'CatalogService'</span>).in(__dirname, <span class="str">'../..'</span>);
+
+<span class="fn">describe</span>(<span class="str">'CatalogService'</span>, () <span class="op">=&gt;</span> <span class="op">{{</span>
+  
+  <span class="fn">it</span>(<span class="str">'rejects negative price'</span>, <span class="kw">async</span> () <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="kw">const</span> <span class="op">{{</span> POST <span class="op">}}</span> <span class="op">=</span> cds.test;
+    <span class="kw">await</span> <span class="fn">expect</span>(
+      <span class="fn">POST</span>(<span class="str">'/catalog/Books'</span>, <span class="op">{{</span> title: <span class="str">'X'</span>, price: <span class="op">-</span><span class="num">5</span> <span class="op">}}</span>)
+    ).<span class="fn">to</span>.<span class="fn">be</span>.rejectedWith(<span class="str">/positive/</span>);
+  <span class="op">}});</span>
+
+  <span class="fn">it</span>(<span class="str">'computes discount on read'</span>, <span class="kw">async</span> () <span class="op">=&gt;</span> <span class="op">{{</span>
+    <span class="kw">const</span> <span class="op">{{</span> GET <span class="op">}}</span> <span class="op">=</span> cds.test;
+    <span class="kw">const</span> <span class="op">{{</span> data <span class="op">}}</span> <span class="op">=</span> <span class="kw">await</span> <span class="fn">GET</span>(<span class="str">"/catalog/Books?$select=ID,price,discount"</span>);
+    expect(data.value<span class="op">[</span><span class="num">0</span><span class="op">]</span>.discount).<span class="fn">to</span>.<span class="fn">equal</span>(data.value<span class="op">[</span><span class="num">0</span><span class="op">]</span>.price <span class="op">*</span> <span class="num">0.1</span>);
+  <span class="op">}});</span>
+<span class="op">}});</span></code></pre>
+</div>
+
+      <h3>2. Integration test end-to-end</h3>
+      <p>Usa SQLite in-memory per CI veloci, e un container HANA HXE / HANA Cloud trial per test "veri":</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.bash</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># CI: SQLite, in-process, &lt; 5 secondi</span>
+npm test
+
+<span class="cmt"># Pre-prod: contro HANA Cloud trial</span>
+cds bind --to hana:bookshop-db
+npm run test:integration</code></pre>
+</div>
+
+      <h3>3. Contract test sulle API OData</h3>
+      <p>Genera lo schema $metadata e verifica che non si rompa tra release:</p>
+      <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>.bash</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>cds compile srv --to edmx <span class="op">&gt;</span> tests/fixtures/expected-metadata.xml
+
+<span class="cmt"># In CI:</span>
+cds compile srv --to edmx <span class="op">|</span> diff - tests/fixtures/expected-metadata.xml
+<span class="cmt"># Se diff fallisce, qualcuno ha cambiato il contratto API senza accorgersene</span></code></pre>
+</div>
+
+      <div class="callout callout-tip">
+  <div class="callout-label">Testing in pipeline</div>
+  <p>Il pattern più solido: unit con SQLite (veloci, ogni commit) → integration con HANA su pull request → smoke test post-deploy su ambiente staging. Mai pushare in produzione senza che almeno i livelli 1+2 siano verdi.</p>
+</div>
+    </section>
+
+    <section id="c-14">
+      <h2 data-num="10.14">Il progetto finale: Library Management</h2>
+      <p>Hai attraversato 10 capitoli. Ora un solo progetto che <strong>tocchi tutto</strong>. Non leggerlo: <em>costruiscilo</em>. È il modo in cui i topic si sedimentano in muscle memory.</p>
+
+      <h3>Specifica funzionale</h3>
+      <p>Library Management: una piattaforma SaaS B2B per biblioteche pubbliche. Ogni biblioteca (tenant) gestisce: il proprio catalogo libri, gli autori, gli utenti iscritti, i prestiti, le multe, gli eventi.</p>
+
+      <h3>Checklist tecnica obbligatoria</h3>
+      <table class="data-table">
+        <thead><tr><th>Capitolo</th><th>Tema</th><th>Cosa devi mostrare</th></tr></thead>
+        <tbody>
+          <tr><td>1-2</td><td>Modello</td><td>≥ 10 entity con tutti i tipi CDS visti, key strategiche, default</td></tr>
+          <tr><td>3</td><td>Relazioni</td><td>Association to many, Composition padre-figli, many-to-many con link table, self-reference</td></tr>
+          <tr><td>4</td><td>Aspects</td><td>cuid, managed, temporal, localized, almeno un custom aspect</td></tr>
+          <tr><td>5</td><td>Views</td><td>≥ 5 view: semplice, parametric, calculated, aggregata, con expand</td></tr>
+          <tr><td>6</td><td>Services</td><td>≥ 3 service con scope diversi: pubblico, autenticato, admin. ≥ 4 action/function</td></tr>
+          <tr><td>7</td><td>Annotations</td><td>UI annotations complete per List Report + Object Page su almeno 2 entity. Restrict con $user</td></tr>
+          <tr><td>8</td><td>CQL</td><td>Custom handler con path expression, expand, aggregations, transazioni</td></tr>
+          <tr><td>9</td><td>HANA</td><td>Deploy reale su HANA Cloud HDI. Almeno 1 hdbview o calculation view nativa</td></tr>
+          <tr><td>10</td><td>Expert</td><td>Draft enabled, ≥ 2 eventi emessi, multitenancy attiva, 1 extension demo</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Roadmap suggerita (4-6 settimane part-time)</h3>
+      <ol>
+        <li><strong>Settimana 1</strong> — modello dati completo (db/). cds watch + sqlite, niente UI.</li>
+        <li><strong>Settimana 2</strong> — service layer (srv/) + custom handlers. Tutti i test unit verdi.</li>
+        <li><strong>Settimana 3</strong> — UI annotations + Fiori Elements app. Browser-test ogni flow.</li>
+        <li><strong>Settimana 4</strong> — Draft, eventi, validazioni cross-entity, regole di business.</li>
+        <li><strong>Settimana 5</strong> — Deploy HANA Cloud, MTA, multitenancy con 2 tenant demo.</li>
+        <li><strong>Settimana 6</strong> — Extension demo, observability, README finale.</li>
+      </ol>
+
+      <div class="callout callout-tip">
+  <div class="callout-label">Il vero metro</div>
+  <p>Quando il tuo progetto finale può: (1) onboarding di un nuovo tenant in &lt; 2 minuti via API, (2) sopravvivere a un fault del DB con retry trasparente, (3) tracciare un'intera request HTTP attraverso log e trace fino alla query SQL HANA — allora sei un developer CDS senior. A quel punto il prossimo step non è leggere altro: è insegnare ad altri.</p>
+</div>
+    </section>
+
+    <section id="c-ex">
+      <h2 data-num="◆">Esercizio del capitolo</h2>
+      <p>Per ciascuna delle aree del capitolo, costruisci un piccolo proof of concept indipendente:</p>
+      <ol>
+        <li><strong>Draft demo</strong> — entity <code>Article</code> con draft enabled. Custom handler che valida soft sul draft (lunghezza title) e strict all'activate (uniqueness). Verifica con due browser tab che il locking funziona.</li>
+        <li><strong>Event demo</strong> — service <code>ShopService</code> che emette <code>OrderPlaced</code>. Un secondo service <code>InventoryService</code> sottoscrive e decrementa lo stock. In-process prima, poi config Event Mesh.</li>
+        <li><strong>Multitenant demo</strong> — fai <code>cds add multitenancy</code> sul bookshop standard. Deploy su BTP trial. Onboarding di 2 tenant via API. Verifica che inserendo dati come tenant-A, tenant-B non li veda.</li>
+        <li><strong>Extension demo</strong> — sul progetto multitenant precedente, applica un'estensione che aggiunge campo <code>customRating</code> su <code>Books</code> solo per tenant-A. Verifica che tenant-B non veda il campo nel metadata.</li>
+        <li><strong>Performance audit</strong> — prendi un tuo progetto esistente, cerca 3 query con potenziale N+1. Riscrivile con expand. Misura il tempo prima/dopo con <code>console.time</code>.</li>
+      </ol>
+      <p>Quando hai chiuso tutti e 5 i punti — <strong>complimenti</strong>. Sei expert. Adesso pensa al tuo progetto finale, perché il viaggio vero comincia adesso.</p>
+    </section>
+
+
+    <nav class="chapter-nav">
+  <a href="ch09-hana.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">09 · Deploy & HANA nativo</span>
+  </a>
+  <span></span>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#c-1" >10.1 · Il modello Draft di CAP</a></li>
+    <li><a href="#c-2" >10.2 · @odata.draft.enabled in dettaglio</a></li>
+    <li><a href="#c-3" >10.3 · Lifecycle dei draft</a></li>
+    <li><a href="#c-4" >10.4 · Custom handlers per draft</a></li>
+    <li><a href="#c-5" >10.5 · Eventi e messaging</a></li>
+    <li><a href="#c-6" >10.6 · SAP Event Mesh & Kafka</a></li>
+    <li><a href="#c-7" >10.7 · Multitenancy: il modello mentale</a></li>
+    <li><a href="#c-8" >10.8 · @sap/cds-mtxs in pratica</a></li>
+    <li><a href="#c-9" >10.9 · Extensibility: estendere modelli</a></li>
+    <li><a href="#c-10" >10.10 · Feature toggles</a></li>
+    <li><a href="#c-11" >10.11 · Performance tuning: l'arsenale completo</a></li>
+    <li><a href="#c-12" >10.12 · Observability: log, trace, metrics</a></li>
+    <li><a href="#c-13" >10.13 · Test strategy</a></li>
+    <li><a href="#c-14" >10.14 · Il progetto finale: Library Management</a></li>
+    <li><a href="#c-ex" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

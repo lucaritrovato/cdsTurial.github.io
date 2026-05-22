@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 05 · Views, projections, calculated — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html" class="active"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 05</span>
+      <span>Views, projections, calculated</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">05</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 05 · Views, projections, calculated</div>
+        <h1 class="chapter-title">Views, projections, <em>calculated</em></h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Il vero superpotere di CDS. Imparare a esprimere in modo dichiarativo quasi tutta la logica di lettura. Path expressions al posto delle JOIN, calculated elements, aggregazioni, view parametriche.</p>
+    
+
+    <h2 id="perche-view" data-num="05.1">Perché le <em>view</em> contano</h2>
+    
+    <p>Le view sono il <strong>superpotere</strong> di CDS. Quando un'app CAP è scritta bene, gran parte della logica "di lettura" non è in handler JavaScript ma in view CDS: dichiarative, ottimizzate dal DB, automaticamente esposte come endpoint OData.</p>
+    
+    <p>La regola pratica: <strong>se ti ritrovi a scrivere un handler <code>after('READ')</code> che modifica i dati restituiti, probabilmente quella logica dovrebbe essere una view CDS.</strong> Lascia che il DB faccia il lavoro pesante. Lascia che CDS dichiari il risultato.</p>
+    
+    <h2 id="view-base" data-num="05.2">View <em>di base</em></h2>
+    
+    <h3 id="proiezioni">Proiezioni e rinomina</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title    : <span class="type">String</span>;
+  price    : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+  stock    : <span class="type">Integer</span>;
+  isbn     : <span class="type">String</span>;
+  createdBy: <span class="type">String</span>;
+}}
+
+<span class="cmt">// View che mostra solo alcuni campi, con rinomina</span>
+<span class="kw">view</span> <span class="type">BooksLite</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID,
+  title <span class="kw">as</span> name,        <span class="cmt">// rinomina</span>
+  price,
+  stock <span class="kw">as</span> inventory    <span class="cmt">// rinomina</span>
+}};</code></pre>
+</div>
+    
+    <p>La sintassi richiama SQL ma non è SQL: le view CDS vengono compilate in SQL del DB target. Su HANA diventano <code>.hdbview</code>.</p>
+    
+    <h3 id="filtri">Filtri WHERE</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">ExpensiveBooks</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID, title, price
+}} <span class="kw">where</span> price &gt; <span class="num">50</span>;
+
+<span class="kw">view</span> <span class="type">AvailableBooks</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  *  <span class="cmt">// tutti i campi</span>
+}} <span class="kw">where</span> stock &gt; <span class="num">0</span>;</code></pre>
+</div>
+    
+    <p>Sì, l'asterisco funziona. CDS espande tutti i campi dell'entity source. Comodo, ma in production preferisco specificare i campi: è più chiaro cosa la view espone e ti protegge da aggiunte involontarie di colonne sensibili nel source.</p>
+    
+    <h2 id="path-expressions" data-num="05.3">Path <em>expressions</em></h2>
+    
+    <p>Questa è la feature che, una volta capita, cambia il modo in cui scrivi query in CAP. <strong>I path expressions sostituiscono le JOIN.</strong></p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>;
+  author : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Authors</span>;
+}}
+
+<span class="kw">entity</span> <span class="type">Authors</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  name   : <span class="type">String</span>;
+  country: <span class="type">Association</span> <span class="kw">to</span> <span class="type">Countries</span>;
+}}
+
+<span class="cmt">// Path expression: niente JOIN, segui le association con la notazione punto</span>
+<span class="kw">view</span> <span class="type">BooksWithAuthor</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID,
+  title,
+  author.name <span class="kw">as</span> authorName,
+  author.country.code <span class="kw">as</span> authorCountry,
+  author.country.name <span class="kw">as</span> authorCountryName
+}};</code></pre>
+</div>
+    
+    <p>Cosa fa CDS dietro le quinte? Genera SQL con JOIN: <code>LEFT OUTER JOIN Authors ON ... LEFT OUTER JOIN Countries ON ...</code>. Tu non devi scrivere niente. <strong>Ogni "punto" in un path expression è un JOIN implicito</strong>.</p>
+    
+    <p>I path expressions funzionano anche nei filtri:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">ItalianBooks</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID, title, author.name <span class="kw">as</span> authorName
+}} <span class="kw">where</span> author.country.code = <span class="str">'IT'</span>;</code></pre>
+</div>
+    
+    <div class="callout callout-tip">
+  <div class="callout-label">Profondità arbitraria</div>
+  <p>Puoi andare in profondità quanto serve: <code>order.customer.country.region.continent.name</code>. Finché esistono le association nel modello, CDS genera tutti i join per te. Mai più <code>JOIN ... ON ... AND ...</code> scritti a mano.</p>
+</div>
+    
+    <h2 id="expand" data-num="05.4"><em>Expand</em> nelle view</h2>
+    
+    <p>I path expression "appiattiscono" le relazioni in colonne. Se invece vuoi che il risultato abbia struttura annidata (utile per API OData), usi <code>expand</code>:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">BooksNested</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID,
+  title,
+  author {{      <span class="cmt">// expand: include un oggetto annidato</span>
+    name,
+    country.code <span class="kw">as</span> countryCode
+  }}
+}};</code></pre>
+</div>
+    
+    <p>Restituisce JSON come:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>risultato</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>{{
+  <span class="str">"ID"</span>: <span class="str">"..."</span>,
+  <span class="str">"title"</span>: <span class="str">"..."</span>,
+  <span class="str">"author"</span>: {{
+    <span class="str">"name"</span>: <span class="str">"..."</span>,
+    <span class="str">"countryCode"</span>: <span class="str">"IT"</span>
+  }}
+}}</code></pre>
+</div>
+    
+    <p>Per association <code>to many</code>, l'expand restituisce un array:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">AuthorsWithBooks</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Authors</span> {{
+  ID,
+  name,
+  books {{          <span class="cmt">// to many → array</span>
+    title,
+    price
+  }}
+}};</code></pre>
+</div>
+    
+    <h2 id="calculated" data-num="05.5"><em>Calculated</em> elements</h2>
+    
+    <p>Campi calcolati al volo, scritti come espressioni SQL:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">OrderItems</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  quantity   : <span class="type">Integer</span>;
+  unitPrice  : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+  vatRate    : <span class="type">Decimal</span>(<span class="num">5</span>,<span class="num">2</span>);
+  
+  <span class="cmt">// Calculated on-read</span>
+  total      : <span class="type">Decimal</span>(<span class="num">11</span>,<span class="num">2</span>) = quantity * unitPrice;
+  totalWithVat : <span class="type">Decimal</span>(<span class="num">11</span>,<span class="num">2</span>) = total * (<span class="num">1</span> + vatRate / <span class="num">100</span>);
+}}</code></pre>
+</div>
+    
+    <p>I calculated possono composare altri calculated (<code>totalWithVat</code> usa <code>total</code>). CAP risolve la dipendenza in fase di compile.</p>
+    
+    <h3 id="stored-vs-onread">Stored vs on-read</h3>
+    
+    <p>Due varianti, con trade-off opposti:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// ON-READ: calcolato ogni volta che leggi (default)</span>
+total : <span class="type">Decimal</span>(<span class="num">11</span>,<span class="num">2</span>) = quantity * unitPrice;
+
+<span class="cmt">// STORED: calcolato all'INSERT/UPDATE, memorizzato</span>
+total : <span class="type">Decimal</span>(<span class="num">11</span>,<span class="num">2</span>) = quantity * unitPrice <span class="kw">stored</span>;</code></pre>
+</div>
+    
+    <table>
+      <thead>
+        <tr><th>Variante</th><th>Vantaggi</th><th>Svantaggi</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>on-read</td><td>Sempre coerente, niente storage extra</td><td>CPU ad ogni read</td></tr>
+        <tr><td>stored</td><td>Velocissimo in read, indicizzabile</td><td>Spazio DB, ricalcolo automatico</td></tr>
+      </tbody>
+    </table>
+    
+    <p><strong>Linea guida</strong>: stored se la query lo legge molto spesso e l'espressione è cara (join, aggregazioni). On-read se cambia spesso o è banale.</p>
+    
+    <h2 id="aggregazioni" data-num="05.6">Aggregazioni e <em>GROUP BY</em></h2>
+    
+    <p>Le view aggregate sono perfette per reporting e dashboard:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">SalesByAuthor</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  author.ID         <span class="kw">as</span> authorID,
+  author.name       <span class="kw">as</span> authorName,
+  count(*)          <span class="kw">as</span> bookCount  : <span class="type">Integer</span>,
+  sum(stock * price)<span class="kw">as</span> inventoryValue : <span class="type">Decimal</span>(<span class="num">15</span>,<span class="num">2</span>),
+  avg(price)        <span class="kw">as</span> avgPrice : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>),
+  max(price)        <span class="kw">as</span> maxPrice : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>)
+}} <span class="kw">group by</span> author.ID, author.name;</code></pre>
+</div>
+    
+    <p>Tre dettagli importanti:</p>
+    
+    <ol>
+      <li>Le funzioni standard SQL (<code>count</code>, <code>sum</code>, <code>avg</code>, <code>min</code>, <code>max</code>) sono supportate</li>
+      <li>I campi aggregati richiedono di specificare il tipo (<code>: Integer</code>, <code>: Decimal(...)</code>)</li>
+      <li>Path expressions funzionano anche nel <code>group by</code></li>
+    </ol>
+    
+    <p>Aggiungi un <code>having</code> per filtri sull'aggregato:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">TopAuthors</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  author.name <span class="kw">as</span> authorName,
+  count(*) <span class="kw">as</span> bookCount : <span class="type">Integer</span>
+}} <span class="kw">group by</span> author.name
+  <span class="kw">having</span> count(*) &gt; <span class="num">5</span>;</code></pre>
+</div>
+    
+    <h2 id="union" data-num="05.7">Union, join, <em>subquery</em></h2>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// UNION ALL: combina due query</span>
+<span class="kw">view</span> <span class="type">AllContacts</span> <span class="kw">as</span> 
+  <span class="kw">select from</span> <span class="type">Customers</span> {{ name, email, <span class="str">'customer'</span> <span class="kw">as</span> type : <span class="type">String</span> }}
+  <span class="kw">union all</span>
+  <span class="kw">select from</span> <span class="type">Suppliers</span> {{ name, email, <span class="str">'supplier'</span> <span class="kw">as</span> type : <span class="type">String</span> }};
+
+<span class="cmt">// JOIN esplicita (se path expression non basta)</span>
+<span class="kw">view</span> <span class="type">BookSalesReport</span> <span class="kw">as</span>
+  <span class="kw">select from</span> <span class="type">Books</span> <span class="kw">as</span> b
+    <span class="kw">inner join</span> <span class="type">Sales</span> <span class="kw">as</span> s <span class="kw">on</span> s.book = b.ID
+  {{
+    b.title,
+    sum(s.quantity) <span class="kw">as</span> sold : <span class="type">Integer</span>
+  }} <span class="kw">group by</span> b.title;
+
+<span class="cmt">// Subquery</span>
+<span class="kw">view</span> <span class="type">BooksAbovAvg</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Books</span> {{
+  ID, title, price
+}} <span class="kw">where</span> price &gt; (<span class="kw">select</span> avg(price) <span class="kw">from</span> <span class="type">Books</span>);</code></pre>
+</div>
+    
+    <h2 id="parametrize" data-num="05.8">View <em>parametriche</em></h2>
+    
+    <p>Le view possono accettare parametri al momento della query, generando SQL parametrico:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">view</span> <span class="type">BooksByPriceRange</span>(min : <span class="type">Decimal</span>, max : <span class="type">Decimal</span>) <span class="kw">as</span>
+  <span class="kw">select from</span> <span class="type">Books</span> {{ ID, title, price }}
+  <span class="kw">where</span> price <span class="kw">between</span> :min <span class="kw">and</span> :max;</code></pre>
+</div>
+    
+    <p>Dal client (lato handler o servizio OData):</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>in handler JS</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">const</span> results = <span class="kw">await</span> <span class="fn">SELECT</span>.from(BooksByPriceRange).where({{ 
+  min: <span class="num">10</span>, max: <span class="num">50</span> 
+}});</code></pre>
+</div>
+    
+    <p>Su HANA queste diventano <code>.hdbview</code> con parametri reali, gestiti dal motore HANA. Performance eccellenti.</p>
+    
+    <h2 id="projection-vs-view" data-num="05.9">Projection vs <em>view</em></h2>
+    
+    <p>Due costrutti che si somigliano, ma con uso diverso:</p>
+    
+    <table>
+      <thead>
+        <tr><th>Aspetto</th><th><code>view ... as select from</code></th><th><code>entity ... as projection on</code></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Dove vive</td><td>In <code>db/</code> tipicamente</td><td>In <code>srv/</code> tipicamente</td></tr>
+        <tr><td>Scopo</td><td>Trasformare dati</td><td>Esporre dati al client</td></tr>
+        <tr><td>Annotabile</td><td>Sì</td><td>Sì (e di solito è qui che si annota per UI)</td></tr>
+        <tr><td>Persistenza</td><td>View SQL sul DB</td><td>Non persistita</td></tr>
+        <tr><td>Sintassi simile</td><td>Più SQL-like</td><td>Più CDS-like</td></tr>
+      </tbody>
+    </table>
+    
+    <p><strong>Pattern</strong>: usa <code>view</code> nel layer DB per trasformazioni dati che hanno senso a livello di persistenza. Usa <code>projection</code> nei service per modellare l'esposizione al client (rinominare campi, escludere colonne sensibili, applicare filtri di sicurezza).</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// db/views.cds</span>
+<span class="kw">view</span> <span class="type">ActiveOrders</span> <span class="kw">as</span> <span class="kw">select from</span> <span class="type">Orders</span> {{
+  *
+}} <span class="kw">where</span> status != <span class="str">'archived'</span>;
+
+<span class="cmt">// srv/service.cds</span>
+<span class="kw">service</span> <span class="type">OrderService</span> {{
+  <span class="kw">entity</span> <span class="type">Orders</span> <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.ActiveOrders
+    <span class="kw">excluding</span> {{ createdBy, modifiedBy }};
+}}</code></pre>
+</div>
+    
+    <h2 id="esercizio" data-num="05.10">Esercizio del capitolo</h2>
+    
+    <p>Sul modello del Capitolo 4, costruisci queste view:</p>
+    
+    <ol>
+      <li>Una view <code>SessionSummary</code> che mostri per ogni sessione: titolo, nome speaker, paese speaker, numero di attendees</li>
+      <li>Una view aggregata <code>ConferenceStats</code> con: titolo conferenza, numero totale sessioni, numero totale attendees unici, durata in giorni</li>
+      <li>Una view parametrica <code>SessionsByDateRange</code> che prenda due date e restituisca le sessioni in quel range</li>
+      <li>Una view con UNION di sessioni recenti (ultimi 30 giorni) e future (prossimi 30 giorni), con un campo type per distinguerle</li>
+      <li>Una projection in un service <code>PublicCatalog</code> che esponga solo i dati conferenza non sensibili (no email organizer, no costi)</li>
+    </ol>
+
+
+    <nav class="chapter-nav">
+  <a href="ch04-aspects.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">Aspects, mixins, riusabilità</span>
+  </a>
+  <a href="ch06-services.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">Services, actions, functions</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#perche-view" >Perché le view contano</a></li>
+    <li><a href="#view-base" >View di base</a></li>
+    <li><a href="#proiezioni" style="padding-left: 1.5rem; font-size: 0.78rem;">Proiezioni e rinomina</a></li>
+    <li><a href="#filtri" style="padding-left: 1.5rem; font-size: 0.78rem;">Filtri WHERE</a></li>
+    <li><a href="#path-expressions" >Path expressions</a></li>
+    <li><a href="#expand" >Expand nelle view</a></li>
+    <li><a href="#calculated" >Calculated elements</a></li>
+    <li><a href="#stored-vs-onread" style="padding-left: 1.5rem; font-size: 0.78rem;">Stored vs on-read</a></li>
+    <li><a href="#aggregazioni" >Aggregazioni e GROUP BY</a></li>
+    <li><a href="#union" >Union, join, subquery</a></li>
+    <li><a href="#parametrize" >View parametriche</a></li>
+    <li><a href="#projection-vs-view" >Projection vs view</a></li>
+    <li><a href="#esercizio" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

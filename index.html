@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDS Mastery — Tutorial completo del linguaggio CDS per SAP CAP & HANA</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="ch01-foundations.html">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout-single">
+
+  <section class="hero">
+    <div class="hero-issue">
+      <span>Issue Nº 01</span>
+      <span>·</span>
+      <span>The Complete Guide</span>
+      <span>·</span>
+      <span>SAP CAP + HANA Cloud</span>
+    </div>
+    
+    <h1 class="hero-title">
+      Il linguaggio<br>
+      <em>CDS</em>, raccontato<br>
+      <span class="stroke">davvero</span> bene.
+    </h1>
+    
+    <p class="hero-deck">
+      Un tutorial editoriale, dettagliato e ragionato, per padroneggiare 
+      <em>Core Data Services</em> nell'ecosistema SAP Cloud Application Programming Model.
+      Dalle prime entity al deploy su HANA Cloud, dieci capitoli per diventare expert.
+    </p>
+    
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Capitoli</span>
+        <span class="hero-meta-value">10 + Reference</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Esempi codice</span>
+        <span class="hero-meta-value">200+</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Livello finale</span>
+        <span class="hero-meta-value">Expert</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Stack</span>
+        <span class="hero-meta-value">CAP · CDS · HANA</span>
+      </div>
+    </div>
+    
+    <a href="ch01-foundations.html" class="hero-cta">
+      Inizia dal Capitolo 1
+      <span class="hero-cta-arrow">→</span>
+    </a>
+  </section>
+
+  <section class="chapters-section">
+    <div class="section-header">
+      <h2 class="section-title">I <em>capitoli</em></h2>
+      <span class="section-meta">10 chapters · ~45 min ciascuno</span>
+    </div>
+    
+    <div class="chapters-grid">
+      
+      <a href="ch01-foundations.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·01</span>
+          <span class="chapter-card-level l-basic">Fondamenta</span>
+        </div>
+        <h3 class="chapter-card-title">Anatomia di un progetto CAP</h3>
+        <p class="chapter-card-desc">Struttura, convenzioni, il primo file <code>.cds</code> e la magia di <code>cds watch</code>. Capire <em>perché</em> esiste CDS prima di scrivere una riga.</p>
+        <div class="chapter-card-foot">
+          <span>~35 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch02-syntax.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·02</span>
+          <span class="chapter-card-level l-basic">Fondamenta</span>
+        </div>
+        <h3 class="chapter-card-title">Sintassi, tipi, entity</h3>
+        <p class="chapter-card-desc">Il vocabolario di base: tipi primitivi, chiavi, costraints, default. Come CAP traduce CDS in DDL HANA, riga per riga.</p>
+        <div class="chapter-card-foot">
+          <span>~40 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch03-associations.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·03</span>
+          <span class="chapter-card-level l-inter">Intermedio</span>
+        </div>
+        <h3 class="chapter-card-title">Associations & Compositions</h3>
+        <p class="chapter-card-desc">Il cuore del modello dati. Differenza concettuale, foreign key automatiche, managed associations, e quando usare cosa.</p>
+        <div class="chapter-card-foot">
+          <span>~50 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch04-aspects.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·04</span>
+          <span class="chapter-card-level l-inter">Intermedio</span>
+        </div>
+        <h3 class="chapter-card-title">Aspects, mixins, riusabilità</h3>
+        <p class="chapter-card-desc"><code>cuid</code>, <code>managed</code>, <code>temporal</code>, <code>localized</code> e aspect custom. DRY al livello del modello.</p>
+        <div class="chapter-card-foot">
+          <span>~40 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch05-views.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·05</span>
+          <span class="chapter-card-level l-inter">Intermedio</span>
+        </div>
+        <h3 class="chapter-card-title">Views, projections, calculated</h3>
+        <p class="chapter-card-desc">Il superpotere di CDS. Path expressions, view parametriche, calculated elements stored e on-read, union e subquery.</p>
+        <div class="chapter-card-foot">
+          <span>~55 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch06-services.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·06</span>
+          <span class="chapter-card-level l-adv">Avanzato</span>
+        </div>
+        <h3 class="chapter-card-title">Services, actions, functions</h3>
+        <p class="chapter-card-desc">Esporre il modello. Bound vs unbound, parametri complessi, return types strutturati, gestione errori.</p>
+        <div class="chapter-card-foot">
+          <span>~45 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch07-annotations.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·07</span>
+          <span class="chapter-card-level l-adv">Avanzato</span>
+        </div>
+        <h3 class="chapter-card-title">Annotations: il linguaggio nel linguaggio</h3>
+        <p class="chapter-card-desc">UI, Common, Capabilities, Core, Measures. Generare Fiori Elements senza una riga di JS. Security dichiarativa con <code>@restrict</code>.</p>
+        <div class="chapter-card-foot">
+          <span>~60 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch08-cql.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·08</span>
+          <span class="chapter-card-level l-adv">Avanzato</span>
+        </div>
+        <h3 class="chapter-card-title">CQL & CQN, le query CAP</h3>
+        <p class="chapter-card-desc">Il dialetto SQL di CAP. <code>SELECT</code>, <code>INSERT</code>, <code>UPDATE</code>, <code>UPSERT</code>, expand, aggregazioni, transazioni.</p>
+        <div class="chapter-card-foot">
+          <span>~50 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch09-hana.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·09</span>
+          <span class="chapter-card-level l-expert">Expert</span>
+        </div>
+        <h3 class="chapter-card-title">Deploy & HANA Cloud nativo</h3>
+        <p class="chapter-card-desc">HDI containers, mta.yaml, artefatti nativi <code>.hdbview</code>, <code>.hdbprocedure</code>, <code>.hdbcalculationview</code>. Bridging tra CDS e HANA puro.</p>
+        <div class="chapter-card-foot">
+          <span>~55 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+      <a href="ch10-expert.html" class="chapter-card">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">CH·10</span>
+          <span class="chapter-card-level l-expert">Expert</span>
+        </div>
+        <h3 class="chapter-card-title">Draft, multitenancy, extensibility</h3>
+        <p class="chapter-card-desc">I pattern enterprise. Draft handling Fiori, isolamento tenant via HDI, estendere modelli di terzi, feature toggles.</p>
+        <div class="chapter-card-foot">
+          <span>~45 min lettura</span>
+          <span class="chapter-card-arrow">→</span>
+        </div>
+      </a>
+      
+    </div>
+  </section>
+
+  <div class="divider-ornament">· · ·</div>
+
+  <section class="chapters-section">
+    <div class="section-header">
+      <h2 class="section-title">Come <em>usare</em> questo tutorial</h2>
+      <span class="section-meta">3 percorsi consigliati</span>
+    </div>
+    
+    <div class="chapters-grid">
+      <div class="chapter-card" style="cursor: default;">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">PATH·A</span>
+          <span class="chapter-card-level l-basic">Sequenziale</span>
+        </div>
+        <h3 class="chapter-card-title">Da zero a expert</h3>
+        <p class="chapter-card-desc">Leggi i capitoli in ordine, dal primo all'ultimo. Ogni capitolo presuppone solo i precedenti. Ideale se parti da zero o vuoi consolidare ogni concetto. Tempo stimato: <strong>~8 ore di lettura attiva</strong>, più tempo per gli esercizi.</p>
+      </div>
+      
+      <div class="chapter-card" style="cursor: default;">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">PATH·B</span>
+          <span class="chapter-card-level l-inter">Refresher</span>
+        </div>
+        <h3 class="chapter-card-title">Conosci già CAP base?</h3>
+        <p class="chapter-card-desc">Salta i Capitoli 1-2 (sintassi e setup) e parti dal <strong>Capitolo 3</strong>. I capitoli su views (5), annotations (7) e CQL (8) sono dove molti sviluppatori CAP hanno gap. Termina con il Capitolo 9 per il lato HANA puro.</p>
+      </div>
+      
+      <div class="chapter-card" style="cursor: default;">
+        <div class="chapter-card-meta">
+          <span class="chapter-card-num">PATH·C</span>
+          <span class="chapter-card-level l-expert">Targeted</span>
+        </div>
+        <h3 class="chapter-card-title">Riferimento puntuale</h3>
+        <p class="chapter-card-desc">Usa la pagina <a href="reference.html">Reference</a> come cheatsheet per consultazioni rapide: tipi, annotations, sintassi CQL, comandi CLI. Combinala con i singoli capitoli quando ti serve approfondire.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore: capitoli pensati per essere letti, non solo consultati. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

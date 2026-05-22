@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 06 · Services, actions, functions — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html" class="active"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 06</span>
+      <span>Services, actions, functions</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">06</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 06 · Services, actions, functions</div>
+        <h1 class="chapter-title">Services, actions, functions</h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Il <em>service</em> &egrave; il punto in cui il tuo modello dati incontra il mondo. Qui decidi cosa esporre, a chi, come, e con quali regole. Pi&ugrave; di tutto: definisci le <em>operazioni</em> &mdash; action e function &mdash; che sono il vero linguaggio di business della tua app.</p>
+    
+
+    <section id="s-1">
+      <h2 data-num="6.1">Cos'è un service in CAP</h2>
+      <p>
+        Un <strong>service</strong> in CAP è il <em>contratto</em> tra il tuo modello dati e il mondo esterno.
+        Nel layer <code>db/</code> hai definito <em>cosa</em> sai (entity, association, view). Nel layer
+        <code>srv/</code> decidi <em>cosa esponi</em>, <em>a chi</em>, <em>come</em>. CAP traduce automaticamente
+        ogni service in un endpoint OData V4 — completo di <code>$metadata</code>, query options, batching,
+        ETag, draft handling, paginazione.
+      </p>
+      <p>
+        Una entity nel db è un'astrazione persistita; una entity in un service è una <em>proiezione</em>
+        di quell'astrazione filtrata, rinominata, ristretta, calcolata. Lo stesso modello dati può sostenere
+        decine di servizi diversi: uno per i clienti, uno per il backoffice, uno per il sistema partner B2B,
+        ognuno con permessi, annotazioni UI e logica propria.
+      </p>
+<div class="callout">
+  <div class="callout-label">Mental model</div>
+  <p>Pensa a <code>srv/</code> come al &laquo;cuoco di sala&raquo;: prende dalla cucina (db) gli ingredienti e li compone in piatti diversi per tavoli diversi. Il <em>cosa</em> sta in cucina; il <em>per chi</em> e <em>come</em> stanno in sala.</p>
+</div>
+    </section>
+
+    <section id="s-2">
+      <h2 data-num="6.2">Esporre entity: projection, readonly, insertonly</h2>
+      <p>
+        La sintassi base per pubblicare una entity è la <code>projection</code>:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> { sap.capire.bookshop <span class="kw">as</span> db } <span class="kw">from</span> <span class="str">'../db/schema'</span>;
+
+<span class="kw">service</span> <span class="type">CatalogService</span> {
+  <span class="kw">entity</span> <span class="type">Books</span>   <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+  <span class="kw">entity</span> <span class="type">Authors</span> <span class="kw">as projection on</span> db.<span class="type">Authors</span>;
+}</code></pre>
+</div>
+      <p>
+        Per default ogni entity esposta è full CRUD. Ma raramente è quello che vuoi davvero. CAP offre
+        annotazioni dichiarative per ridurre la superficie di attacco:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="ann">@readonly</span>
+  <span class="kw">entity</span> <span class="type">Books</span>    <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+
+  <span class="ann">@insertonly</span>
+  <span class="kw">entity</span> <span class="type">Orders</span>   <span class="kw">as projection on</span> db.<span class="type">Orders</span>;
+
+  <span class="kw">entity</span> <span class="type">Reviews</span>  <span class="kw">as projection on</span> db.<span class="type">Reviews</span>;
+}</code></pre>
+</div>
+      <p>
+        <code>@readonly</code> blocca <em>CREATE</em>, <em>UPDATE</em>, <em>DELETE</em>: l'entity è solo
+        consultabile. <code>@insertonly</code> permette solo <em>CREATE</em>: utile per ordini, log,
+        feedback &mdash; cose che si scrivono ma non si modificano. Senza annotazioni, è full CRUD.
+      </p>
+<div class="callout callout-warn">
+  <div class="callout-label">Errore tipico</div>
+  <p>Esporre l'entity <code>Users</code> direttamente senza <code>@restrict</code> o senza una projection filtrata. Risultato: chiunque autenticato vede tutti gli utenti. La regola è: <em>una projection per ogni audience</em>.</p>
+</div>
+    </section>
+
+    <section id="s-3">
+      <h2 data-num="6.3">Anatomia di una projection di servizio</h2>
+      <p>
+        Una projection in service è molto più di una copia. Puoi <em>filtrare</em> colonne, <em>aggiungere</em>
+        calculated, <em>rinominare</em>, <em>filtrare</em> righe, <em>nidificare</em> association:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as select from</span> db.<span class="type">Books</span> {
+    ID,
+    title,
+    price,
+    stock,
+    author.name <span class="kw">as</span> authorName,           <span class="cmt">// path expression</span>
+    price * <span class="num">1.22</span> <span class="kw">as</span> priceWithVat : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>),  <span class="cmt">// calculated</span>
+    <span class="kw">case when</span> stock = <span class="num">0</span> <span class="kw">then</span> <span class="str">'out'</span>
+         <span class="kw">when</span> stock &lt; <span class="num">10</span> <span class="kw">then</span> <span class="str">'low'</span>
+         <span class="kw">else</span> <span class="str">'ok'</span> <span class="kw">end as</span> stockStatus : <span class="type">String</span>
+  } <span class="kw">where</span> stock &gt;= <span class="num">0</span>;                          <span class="cmt">// row filter</span>
+
+  <span class="kw">entity</span> <span class="type">PublicBooks</span> <span class="kw">as projection on</span> db.<span class="type">Books</span>
+    <span class="kw">excluding</span> { createdBy, modifiedBy, cost };  <span class="cmt">// nascondi campi sensibili</span>
+}</code></pre>
+</div>
+      <p>
+        L'espressione <code>as projection on</code> con <code>excluding</code> è il pattern più rapido
+        per &laquo;tutto tranne X&raquo;. L'espressione <code>as select from</code> dà controllo totale.
+        Internamente è la stessa cosa: la projection diventa una <em>view OData</em> con regole proprie.
+      </p>
+<div class="callout callout-tip">
+  <div class="callout-label">Pattern: layered services</div>
+  <p>Per applicazioni grandi, crea uno <em>strato di servizio interno</em> (es. <code>InternalService</code>) con tutta la logica, e poi servizi <em>esterni</em> che proiettano da quello. Il vantaggio: la logica vive in un solo posto, le projection di facciata sono leggere.</p>
+</div>
+    </section>
+
+    <section id="s-4">
+      <h2 data-num="6.4">Path del servizio e <code>@path</code></h2>
+      <p>
+        Per default CAP costruisce il path dell'endpoint partendo dal nome del servizio: <code>CatalogService</code>
+        diventa <code>/odata/v4/catalog/</code>. Puoi sovrascrivere esplicitamente:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>annotazione service</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="ann">@path</span>: <span class="str">'/api/v2/catalog'</span>
+<span class="ann">@(requires</span>: <span class="str">'authenticated-user'</span><span class="ann">)</span>
+<span class="kw">service</span> <span class="type">CatalogService</span> {
+  ...
+}</code></pre>
+</div>
+      <p>
+        Una buona pratica è versionare i servizi pubblici: <code>/api/v1/...</code>, <code>/api/v2/...</code>.
+        Cambi breaking? Nuova versione, vecchia in deprecation. CAP non te lo impone, ma ti dà gli strumenti
+        per farlo pulitamente.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>package.json (estratto)</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># package.json - configurazione cds</span>
+<span class="str">"cds"</span>: {
+  <span class="str">"requires"</span>: {
+    <span class="str">"auth"</span>: <span class="str">"mocked"</span>,
+    <span class="str">"db"</span>: <span class="str">"sqlite"</span>
+  },
+  <span class="str">"odata"</span>: {
+    <span class="str">"version"</span>: <span class="str">"v4"</span>,
+    <span class="str">"flavor"</span>: <span class="str">"x4"</span>
+  }
+}</code></pre>
+</div>
+    </section>
+
+    <section id="s-5">
+      <h2 data-num="6.5">Actions vs Functions: la differenza che ti farà sbagliare</h2>
+      <p>
+        Qui CAP eredita la terminologia OData e va presa sul serio:
+      </p>
+      <ul>
+        <li><strong>Function</strong> &mdash; operazione <em>idempotente</em>, senza side-effect. Si invoca con <code>GET</code>. Esempi: calcolare uno sconto, restituire una classifica, validare un codice.</li>
+        <li><strong>Action</strong> &mdash; operazione che <em>cambia stato</em>. Si invoca con <code>POST</code>. Esempi: confermare un ordine, approvare un documento, inviare una mail.</li>
+      </ul>
+      <p>
+        Sbagliare la categoria significa rompere il contratto HTTP. Un'action chiamata in GET sarà cacheata dal
+        browser e dai proxy con effetti devastanti; una function chiamata in POST passerà revisioni di
+        sicurezza come &laquo;operazione mutante&raquo; senza esserlo.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="cmt">// FUNCTION: read-only, idempotente</span>
+  <span class="kw">function</span> <span class="fn">getTopBooks</span>(limit: <span class="type">Integer</span>) <span class="kw">returns array of</span> <span class="type">Books</span>;
+  <span class="kw">function</span> <span class="fn">calculateShipping</span>(weight: <span class="type">Decimal</span>, country: <span class="type">String</span>) <span class="kw">returns</span> <span class="type">Decimal</span>;
+
+  <span class="cmt">// ACTION: muta stato</span>
+  <span class="kw">action</span>   <span class="fn">submitOrder</span>(book: <span class="type">UUID</span>, quantity: <span class="type">Integer</span>) <span class="kw">returns</span> <span class="type">Orders</span>;
+  <span class="kw">action</span>   <span class="fn">resetCatalog</span>();
+}</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Test rapido</div>
+  <p>Se chiamare l'operazione due volte produce due risultati diversi (un nuovo ordine, un'altra mail inviata), è una <em>action</em>. Se produce sempre lo stesso risultato, è una <em>function</em>.</p>
+</div>
+    </section>
+
+    <section id="s-6">
+      <h2 data-num="6.6">Unbound actions e functions</h2>
+      <p>
+        Le operazioni <em>unbound</em> vivono al livello del servizio, non legate ad una entity specifica.
+        Si chiamano via URL piatti come <code>/catalog/getTopBooks(limit=10)</code> o
+        <code>POST /catalog/submitOrder</code>.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="kw">function</span> <span class="fn">searchBooks</span>(
+    query: <span class="type">String</span>,
+    minPrice: <span class="type">Decimal</span> <span class="ann">@mandatory</span>,
+    maxPrice: <span class="type">Decimal</span>
+  ) <span class="kw">returns array of</span> <span class="type">Books</span>;
+
+  <span class="kw">action</span> <span class="fn">importCatalog</span>(
+    source: <span class="type">String</span>,
+    options: {
+      overwrite : <span class="type">Boolean</span>;
+      dryRun    : <span class="type">Boolean</span>;
+    }
+  ) <span class="kw">returns</span> {
+    imported : <span class="type">Integer</span>;
+    skipped  : <span class="type">Integer</span>;
+    errors   : <span class="kw">array of</span> <span class="type">String</span>;
+  };
+}</code></pre>
+</div>
+      <p>
+        Nota i <strong>parametri strutturati</strong> e i <strong>tipi di ritorno strutturati anonimi</strong>:
+        CAP supporta tutto, e le UI generate (Fiori Elements) sanno renderli come dialog form.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>chiamate HTTP</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># Function: GET con parametri inline</span>
+<span class="kw">GET</span> /odata/v4/catalog/searchBooks(query=<span class="str">'cap'</span>,minPrice=<span class="num">10</span>,maxPrice=<span class="num">50</span>)
+
+<span class="cmt"># Action: POST con body JSON</span>
+<span class="kw">POST</span> /odata/v4/catalog/importCatalog
+<span class="kw">Content-Type</span>: application/json
+
+{
+  <span class="str">"source"</span>: <span class="str">"s3://bucket/catalog.json"</span>,
+  <span class="str">"options"</span>: { <span class="str">"overwrite"</span>: <span class="kw">false</span>, <span class="str">"dryRun"</span>: <span class="kw">true</span> }
+}</code></pre>
+</div>
+    </section>
+
+    <section id="s-7">
+      <h2 data-num="6.7">Bound actions: l'arma più potente</h2>
+      <p>
+        Le operazioni <em>bound</em> sono legate ad una entity (o ad una sua collezione). Sono il modo
+        idiomatico di esprimere &laquo;cose che si fanno <em>a</em> un record&raquo;: approvare, archiviare,
+        inviare, duplicare, calcolare. L'URL diventa parlante e i client (Fiori Elements per primo) le
+        rendono automaticamente come bottoni context-aware.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as projection on</span> db.<span class="type">Books</span> <span class="kw">actions</span> {
+
+    <span class="cmt">// bound action su singolo record</span>
+    <span class="kw">action</span> <span class="fn">discount</span>(percent: <span class="type">Integer</span>) <span class="kw">returns</span> <span class="type">Books</span>;
+    <span class="kw">action</span> <span class="fn">archive</span>();
+    <span class="kw">action</span> <span class="fn">duplicate</span>() <span class="kw">returns</span> <span class="type">Books</span>;
+
+    <span class="cmt">// bound function</span>
+    <span class="kw">function</span> <span class="fn">isAvailable</span>() <span class="kw">returns</span> <span class="type">Boolean</span>;
+    <span class="kw">function</span> <span class="fn">recommendations</span>(limit: <span class="type">Integer</span>) <span class="kw">returns array of</span> <span class="type">Books</span>;
+  };
+
+  <span class="kw">entity</span> <span class="type">Orders</span> <span class="kw">as projection on</span> db.<span class="type">Orders</span> <span class="kw">actions</span> {
+    <span class="kw">action</span> <span class="fn">confirm</span>() <span class="kw">returns</span> <span class="type">Orders</span>;
+    <span class="kw">action</span> <span class="fn">cancel</span>(reason: <span class="type">String</span>);
+    <span class="kw">action</span> <span class="fn">refund</span>(amount: <span class="type">Decimal</span>) <span class="kw">returns</span> <span class="type">Orders</span>;
+  };
+}</code></pre>
+</div>
+      <p>
+        Gli URL diventano espliciti e gerarchici:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>URL pattern bound</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># bound su singolo record (la key è nell'URL)</span>
+<span class="kw">POST</span> /odata/v4/catalog/Books(<span class="str">guid'a1b2-...'</span>)/CatalogService.discount
+{ <span class="str">"percent"</span>: <span class="num">15</span> }
+
+<span class="cmt"># bound function</span>
+<span class="kw">GET</span> /odata/v4/catalog/Books(<span class="str">guid'a1b2-...'</span>)/CatalogService.isAvailable()
+
+<span class="cmt"># bound su un Order</span>
+<span class="kw">POST</span> /odata/v4/catalog/Orders(<span class="str">guid'c3d4-...'</span>)/CatalogService.cancel
+{ <span class="str">"reason"</span>: <span class="str">"customer request"</span> }</code></pre>
+</div>
+<div class="callout">
+  <div class="callout-label">Come scegliere</div>
+  <p><strong>Bound</strong> quando l'operazione ha senso solo nel contesto di un record specifico (<em>cancella questo ordine</em>). <strong>Unbound</strong> quando opera su molti record, su una collezione, o non ha un soggetto chiaro (<em>importa il catalogo</em>, <em>cerca</em>).</p>
+</div>
+    </section>
+
+    <section id="s-8">
+      <h2 data-num="6.8">Tipi di ritorno: scalare, entity, array</h2>
+      <p>
+        Le action e function possono restituire qualsiasi cosa: tipi primitivi, entity intere, array di
+        entity, strutture anonime, oppure niente (<code>void</code>).
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">service</span> <span class="type">CatalogService</span> {
+
+  <span class="cmt">// ritorno scalare</span>
+  <span class="kw">function</span> <span class="fn">countBooks</span>() <span class="kw">returns</span> <span class="type">Integer</span>;
+  <span class="kw">function</span> <span class="fn">getVersion</span>() <span class="kw">returns</span> <span class="type">String</span>;
+
+  <span class="cmt">// ritorno entity intera</span>
+  <span class="kw">function</span> <span class="fn">findBook</span>(isbn: <span class="type">String</span>) <span class="kw">returns</span> <span class="type">Books</span>;
+
+  <span class="cmt">// ritorno array</span>
+  <span class="kw">function</span> <span class="fn">topBooks</span>(limit: <span class="type">Integer</span>) <span class="kw">returns array of</span> <span class="type">Books</span>;
+
+  <span class="cmt">// ritorno strutturato anonimo</span>
+  <span class="kw">function</span> <span class="fn">stats</span>() <span class="kw">returns</span> {
+    totalBooks  : <span class="type">Integer</span>;
+    avgPrice    : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+    topAuthor   : <span class="type">String</span>;
+    byCategory  : <span class="kw">array of</span> {
+      category : <span class="type">String</span>;
+      count    : <span class="type">Integer</span>;
+    };
+  };
+
+  <span class="cmt">// nessun ritorno</span>
+  <span class="kw">action</span> <span class="fn">notify</span>(message: <span class="type">String</span>);
+}</code></pre>
+</div>
+<div class="callout callout-warn">
+  <div class="callout-label">Tipi anonimi: usali con misura</div>
+  <p>Comodi sì, ma se la stessa struttura compare in più posti, definisci un <code>type</code> esplicito. Le UI generate (Fiori Elements) hanno più materiale su cui lavorare e la documentazione del servizio risulta più leggibile.</p>
+</div>
+      <p>
+        Tipi nominati:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>tipi riutilizzabili</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">type</span> <span class="type">CatalogStats</span> {
+  totalBooks : <span class="type">Integer</span>;
+  avgPrice   : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+  topAuthor  : <span class="type">String</span>;
+}
+
+<span class="kw">service</span> <span class="type">CatalogService</span> {
+  <span class="kw">function</span> <span class="fn">stats</span>() <span class="kw">returns</span> <span class="type">CatalogStats</span>;
+}</code></pre>
+</div>
+    </section>
+
+    <section id="s-9">
+      <h2 data-num="6.9">Custom handlers: before, on, after</h2>
+      <p>
+        Fin qui hai modellato. Ora dai vita al servizio con codice. CAP usa il pattern <strong>event-driven
+        handler</strong>: tu registri funzioni che reagiscono a eventi sul servizio. Tre fasi, tre intenti:
+      </p>
+      <ul>
+        <li><strong>before</strong> &mdash; validazione, autorizzazione, modifica del payload prima della persistenza.</li>
+        <li><strong>on</strong> &mdash; <em>sostituisci</em> l'implementazione default (raro per CRUD, frequente per action/function).</li>
+        <li><strong>after</strong> &mdash; arricchimento dei risultati, logging, notifiche dopo la transazione.</li>
+      </ul>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/catalog-service.js</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// srv/catalog-service.js</span>
+<span class="kw">const</span> cds = <span class="kw">require</span>(<span class="str">'@sap/cds'</span>);
+
+<span class="kw">module</span>.exports = cds.service.<span class="fn">impl</span>(<span class="kw">async function</span> () {
+  <span class="kw">const</span> { Books, Orders } = <span class="kw">this</span>.entities;
+
+  <span class="cmt">// BEFORE: validazione</span>
+  <span class="kw">this</span>.<span class="fn">before</span>(<span class="str">'CREATE'</span>, Books, req =&gt; {
+    <span class="kw">if</span> (req.data.price &lt; <span class="num">0</span>) {
+      req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Price must be positive'</span>, <span class="str">'price'</span>);
+    }
+    <span class="kw">if</span> (!req.data.title?.<span class="fn">trim</span>()) {
+      req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Title required'</span>, <span class="str">'title'</span>);
+    }
+  });
+
+  <span class="cmt">// BEFORE su UPDATE: solo l'autore può modificare i propri libri</span>
+  <span class="kw">this</span>.<span class="fn">before</span>(<span class="str">'UPDATE'</span>, Books, <span class="kw">async</span> req =&gt; {
+    <span class="kw">const</span> book = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">where</span>({ ID: req.data.ID });
+    <span class="kw">if</span> (book.createdBy !== req.user.id) req.<span class="fn">reject</span>(<span class="num">403</span>);
+  });
+
+  <span class="cmt">// ON: implementazione di un'action</span>
+  <span class="kw">this</span>.<span class="fn">on</span>(<span class="str">'submitOrder'</span>, <span class="kw">async</span> req =&gt; {
+    <span class="kw">const</span> { book, quantity } = req.data;
+    <span class="kw">const</span> b = <span class="kw">await</span> <span class="fn">SELECT</span>.one.<span class="fn">from</span>(Books).<span class="fn">where</span>({ ID: book });
+    <span class="kw">if</span> (!b || b.stock &lt; quantity) req.<span class="fn">reject</span>(<span class="num">409</span>, <span class="str">'Insufficient stock'</span>);
+
+    <span class="kw">await</span> <span class="fn">UPDATE</span>(Books).<span class="fn">set</span>({ stock: { <span class="str">'-='</span>: quantity } }).<span class="fn">where</span>({ ID: book });
+    <span class="kw">return</span> <span class="fn">INSERT</span>.<span class="fn">into</span>(Orders).<span class="fn">entries</span>({ book_ID: book, quantity });
+  });
+
+  <span class="cmt">// AFTER: arricchimento dati</span>
+  <span class="kw">this</span>.<span class="fn">after</span>(<span class="str">'READ'</span>, Books, books =&gt; {
+    <span class="kw">for</span> (<span class="kw">const</span> b <span class="kw">of</span> books) {
+      b.discount = b.price &gt; <span class="num">50</span> ? <span class="str">'10% off'</span> : <span class="kw">null</span>;
+    }
+  });
+
+  <span class="cmt">// AFTER: side-effect (notifica)</span>
+  <span class="kw">this</span>.<span class="fn">after</span>(<span class="str">'CREATE'</span>, Orders, <span class="kw">async</span> order =&gt; {
+    <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">emit</span>(<span class="str">'OrderCreated'</span>, { id: order.ID, total: order.total });
+  });
+});</code></pre>
+</div>
+<div class="callout callout-tip">
+  <div class="callout-label">Pattern: handler in file separati</div>
+  <p>Per servizi grossi, dividi gli handler per entity in file dedicati e importali nel file principale. <code>srv/handlers/books.js</code>, <code>srv/handlers/orders.js</code>, ecc. Mantiene basso il rumore e facile la code review.</p>
+</div>
+    </section>
+
+    <section id="s-10">
+      <h2 data-num="6.10"><code>req</code>, <code>error</code>, <code>reject</code>: gestire i fallimenti</h2>
+      <p>
+        L'oggetto <code>req</code> è il tuo amico in ogni handler. Espone <code>req.data</code>,
+        <code>req.user</code>, <code>req.query</code>, <code>req.params</code>, <code>req.locale</code>,
+        e i metodi <code>req.error()</code>, <code>req.reject()</code>, <code>req.info()</code>,
+        <code>req.warn()</code>.
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>validation pattern</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">this</span>.<span class="fn">before</span>(<span class="str">'CREATE'</span>, Books, req =&gt; {
+
+  <span class="cmt">// error: aggiunge errore alla risposta MA continua a raccogliere altri errori</span>
+  <span class="kw">if</span> (!req.data.title)  req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Title required'</span>, <span class="str">'in/title'</span>);
+  <span class="kw">if</span> (req.data.price &lt; <span class="num">0</span>) req.<span class="fn">error</span>(<span class="num">400</span>, <span class="str">'Price &gt;= 0'</span>, <span class="str">'in/price'</span>);
+  <span class="cmt">// risultato: payload con MULTIPLI errori (ottimo per form validation)</span>
+
+  <span class="cmt">// reject: interrompe SUBITO con un solo errore</span>
+  <span class="kw">if</span> (req.user.id === <span class="str">'anonymous'</span>) req.<span class="fn">reject</span>(<span class="num">401</span>, <span class="str">'Login required'</span>);
+
+  <span class="cmt">// info / warn: messaggi informativi nella risposta, non bloccanti</span>
+  <span class="kw">if</span> (req.data.stock &gt; <span class="num">10000</span>) req.<span class="fn">warn</span>(<span class="str">'Stock molto alto'</span>);
+});</code></pre>
+</div>
+<div class="callout callout-danger">
+  <div class="callout-label">Sicurezza</div>
+  <p>Mai esporre messaggi di errore con dettagli tecnici (stack trace, SQL, path file). Usa codici di errore generici per il client e logga i dettagli sul server con <code>cds.log</code>. CAP per default mappa le eccezioni non gestite a <code>500 Internal Server Error</code>, ma controlla sempre cosa esce.</p>
+</div>
+    </section>
+
+    <section id="s-11">
+      <h2 data-num="6.11">Multi-service e composizione</h2>
+      <p>
+        Una applicazione CAP reale espone più servizi. È normale e desiderabile:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>due servizi, stessa base</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// srv/catalog-service.cds — per i clienti finali</span>
+<span class="kw">service</span> <span class="type">CatalogService</span> <span class="ann">@(path</span>: <span class="str">'/catalog'</span><span class="ann">)</span> {
+  <span class="ann">@readonly</span> <span class="kw">entity</span> <span class="type">Books</span>   <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+  <span class="ann">@readonly</span> <span class="kw">entity</span> <span class="type">Authors</span> <span class="kw">as projection on</span> db.<span class="type">Authors</span>;
+  <span class="kw">action</span> <span class="fn">submitOrder</span>(book: <span class="type">UUID</span>, quantity: <span class="type">Integer</span>);
+}
+
+<span class="cmt">// srv/admin-service.cds — backoffice, autenticato</span>
+<span class="ann">@(requires</span>: <span class="str">'admin'</span><span class="ann">)</span>
+<span class="kw">service</span> <span class="type">AdminService</span> <span class="ann">@(path</span>: <span class="str">'/admin'</span><span class="ann">)</span> {
+  <span class="kw">entity</span> <span class="type">Books</span>   <span class="kw">as projection on</span> db.<span class="type">Books</span>;
+  <span class="kw">entity</span> <span class="type">Orders</span>  <span class="kw">as projection on</span> db.<span class="type">Orders</span>;
+  <span class="kw">entity</span> <span class="type">Authors</span> <span class="kw">as projection on</span> db.<span class="type">Authors</span>;
+}</code></pre>
+</div>
+      <p>
+        I servizi si possono <strong>chiamare tra loro</strong> via <code>cds.connect.to()</code>:
+      </p>
+<div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>service composition</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// in un handler di AdminService</span>
+<span class="kw">const</span> catalog = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'CatalogService'</span>);
+<span class="kw">const</span> topBooks = <span class="kw">await</span> catalog.<span class="fn">run</span>(<span class="fn">SELECT</span>.<span class="fn">from</span>(<span class="str">'Books'</span>).<span class="fn">limit</span>(<span class="num">10</span>));
+
+<span class="cmt">// chiamare un servizio esterno (es. SAP S/4HANA via destination)</span>
+<span class="kw">const</span> s4 = <span class="kw">await</span> cds.connect.<span class="fn">to</span>(<span class="str">'API_BUSINESS_PARTNER'</span>);
+<span class="kw">const</span> partners = <span class="kw">await</span> s4.<span class="fn">run</span>(<span class="fn">SELECT</span>.<span class="fn">from</span>(<span class="str">'A_BusinessPartner'</span>).<span class="fn">where</span>({ Country: <span class="str">'IT'</span> }));</code></pre>
+</div>
+<div class="callout">
+  <div class="callout-label">Pattern: BFF (Backend For Frontend)</div>
+  <p>Crea un service sottile per ogni client (web, mobile, B2B partner). Ogni BFF aggrega chiamate ai servizi &laquo;core&raquo; e le presenta nel formato giusto per quel client. CAP rende questo pattern naturale: i BFF sono solo file <code>.cds</code> con projection e handler che orchestrano.</p>
+</div>
+    </section>
+
+    <section id="s-12">
+      <h2 data-num="6.12">Esercizio del capitolo</h2>
+      <p>
+        Progetta un service <code>BookshopService</code> per una libreria online:
+      </p>
+      <ol>
+        <li><strong>Catalogo pubblico</strong> (no auth) &mdash; <code>@readonly</code> su Books, Authors, Categories.</li>
+        <li><strong>Action <code>submitOrder</code></strong> (unbound, autenticata) &mdash; valida stock, scala disponibilità, crea Order, emette evento <code>OrderPlaced</code>.</li>
+        <li><strong>Function <code>recommendBooks</code></strong> (bound a Books) &mdash; restituisce 5 libri della stessa categoria, ordinati per rating.</li>
+        <li><strong>Bound action <code>cancel</code></strong> su Order &mdash; ripristina lo stock e marca l'ordine come <code>CANCELLED</code>.</li>
+        <li><strong>Bound function <code>history</code></strong> su Authors &mdash; restituisce gli ultimi 10 libri pubblicati dall'autore.</li>
+        <li>Handler <code>before('CREATE', Books)</code> che valida ISBN, formato e stock minimo.</li>
+        <li>Handler <code>after('READ', Books)</code> che aggiunge campo <code>onSale</code> calcolato.</li>
+      </ol>
+<div class="callout callout-tip">
+  <div class="callout-label">Bonus expert</div>
+  <p>Crea un secondo service <code>AdminBookshopService</code> riservato al ruolo <code>admin</code>, che espone le stesse entity ma full CRUD, più un'action <code>importFromCSV</code> con parametro stream.</p>
+</div>
+    </section>
+
+
+    <nav class="chapter-nav">
+  <a href="ch05-views.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">05 · Views, projections, calculated</span>
+  </a>
+  <a href="ch07-annotations.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">07 · Annotations</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#s-1" >6.1 · Cos'è un service in CAP</a></li>
+    <li><a href="#s-2" >6.2 · Esporre entity: projection, readonly, insertonly</a></li>
+    <li><a href="#s-3" >6.3 · Anatomia di una projection di servizio</a></li>
+    <li><a href="#s-4" >6.4 · Path del servizio e @path</a></li>
+    <li><a href="#s-5" >6.5 · Actions vs Functions: la differenza che ti farà sbagliare</a></li>
+    <li><a href="#s-6" >6.6 · Unbound actions e functions</a></li>
+    <li><a href="#s-7" >6.7 · Bound actions: l'arma più potente</a></li>
+    <li><a href="#s-8" >6.8 · Tipi di ritorno: scalare, entity, array</a></li>
+    <li><a href="#s-9" >6.9 · Custom handlers: before, on, after</a></li>
+    <li><a href="#s-10" >6.10 · req, error, reject: gestire i fallimenti</a></li>
+    <li><a href="#s-11" >6.11 · Multi-service e composizione</a></li>
+    <li><a href="#s-12" >6.12 · Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

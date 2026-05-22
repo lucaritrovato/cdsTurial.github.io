@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 01 · Anatomia di un progetto CAP — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html" class="active"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 01</span>
+      <span>Anatomia di un progetto CAP</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">01</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 01 · Anatomia di un progetto CAP</div>
+        <h1 class="chapter-title">Anatomia di un progetto <em>CAP</em></h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Prima di scrivere una sola riga di CDS, vale la pena capire perché esiste, dove vive in un progetto, e che ruolo gioca rispetto a HANA e all'API OData. Questo capitolo è il fondamento: setup, struttura, e il modello mentale corretto.</p>
+    
+
+    <h2 id="perche-cds" data-num="01.1">Perché <em>CDS</em> esiste</h2>
+    
+    <p><strong>CDS</strong> sta per <em>Core Data Services</em>. È un linguaggio dichiarativo creato da SAP per descrivere in un unico punto tre cose che, nello sviluppo tradizionale, vivono in posti separati: lo <strong>schema del database</strong>, il <strong>contratto di servizio</strong> esposto al client, e i <strong>metadata UI</strong> che pilotano il frontend.</p>
+    
+    <p>Pensa a un'app classica enterprise. Hai uno schema SQL per il DB. Hai un controller REST o OData che definisce gli endpoint. Hai un'interfaccia che descrive quali campi mostrare, in che ordine, con che label. Tre artefatti, tre fonti di verità, tre opportunità di andare fuori sync.</p>
+    
+    <p>CDS elimina questa frammentazione. Scrivi <em>una sola volta</em> com'è fatto un'entità, e il framework <strong>CAP</strong> (Cloud Application Programming Model) genera automaticamente tabelle HANA, endpoint OData V4, e — con le giuste annotation — anche la UI Fiori Elements.</p>
+    
+    <div class="callout">
+  <div class="callout-label">Definizione operativa</div>
+  <p><strong>CDS è il DNA dichiarativo di un'applicazione SAP moderna.</strong> Tutto il resto — handler in Node.js o Java, controller UI5, configurazione MTA — è impalcatura intorno al modello CDS.</p>
+</div>
+    
+    <h2 id="installare" data-num="01.2">Installare l'ambiente</h2>
+    
+    <h3 id="prerequisiti">Prerequisiti</h3>
+    
+    <p>Prima di scrivere una riga di CDS, ti servono tre cose installate localmente:</p>
+    
+    <ul>
+      <li><strong>Node.js</strong> versione 20 o superiore. Verifica con <code>node --version</code>. È l'engine su cui gira CAP Node.js (esiste anche CAP Java, ma per il 90% dei progetti CAP Node.js è la scelta giusta).</li>
+      <li><strong>Visual Studio Code</strong> con l'estensione <em>SAP CDS Language Support</em>. Senza l'estensione, ogni file <code>.cds</code> sembra un blob di testo nero su bianco; con l'estensione, hai syntax highlighting, auto-complete, jump-to-definition e validazione live.</li>
+      <li>Per il deploy su HANA Cloud, ti servirà anche <strong>Cloud Foundry CLI</strong> (<code>cf</code>) e l'estensione <em>MBT</em> (Multi-Target Application Build Tool): vedremo nel Capitolo 9.</li>
+    </ul>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>terminal</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt"># Installa il CAP Development Kit globalmente</span>
+npm install -g @sap/cds-dk
+
+<span class="cmt"># Verifica</span>
+cds --version
+
+<span class="cmt"># Output atteso (versioni indicative):</span>
+<span class="cmt"># @sap/cds-dk: 8.x.x</span>
+<span class="cmt"># @sap/cds: 8.x.x</span>
+<span class="cmt"># Node.js: v20.x.x</span></code></pre>
+</div>
+    
+    <h3 id="comandi">I comandi essenziali</h3>
+    
+    <p>Il CLI <code>cds</code> è il tuo coltellino svizzero. Sono pochi comandi, ma li userai costantemente:</p>
+    
+    <table>
+      <thead>
+        <tr><th>Comando</th><th>Cosa fa</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>cds init nome</code></td><td>Crea un nuovo progetto CAP nella cartella <code>nome/</code></td></tr>
+        <tr><td><code>cds watch</code></td><td>Avvia il server in modalità development, ricarica su ogni modifica</td></tr>
+        <tr><td><code>cds compile file.cds</code></td><td>Compila un file CDS per ispezionarne l'output</td></tr>
+        <tr><td><code>cds deploy</code></td><td>Esegue il deploy su DB locale (SQLite di default)</td></tr>
+        <tr><td><code>cds build</code></td><td>Prepara i deliverable per il deploy produttivo (HANA)</td></tr>
+        <tr><td><code>cds add hana</code></td><td>Aggiunge la configurazione per HANA Cloud al progetto</td></tr>
+        <tr><td><code>cds repl</code></td><td>Apre una REPL interattiva — utilissima per testare query CQL</td></tr>
+      </tbody>
+    </table>
+    
+    <h2 id="primo-progetto" data-num="01.3">Il primo progetto</h2>
+    
+    <p>Crea il progetto, entra nella cartella, e diamo un'occhiata a cosa CAP ha scaffoldato per te:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>terminal</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>cds init bookshop
+<span class="kw">cd</span> bookshop
+ls -la</code></pre>
+</div>
+    
+    <h3 id="struttura">Struttura delle cartelle</h3>
+    
+    <p>Un progetto CAP appena creato ha questa anatomia:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>filesystem</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>bookshop/
+├── app/                    <span class="cmt"># Frontend (UI5, Fiori Elements, HTML)</span>
+├── db/                     <span class="cmt"># Modello dati (schema)</span>
+│   └── schema.cds          <span class="cmt"># File principale del DB</span>
+├── srv/                    <span class="cmt"># Service layer</span>
+│   └── service.cds         <span class="cmt"># Definizione servizi OData</span>
+├── package.json            <span class="cmt"># Dipendenze e config CAP</span>
+├── .cdsrc.json             <span class="cmt"># Configurazione CDS (opzionale)</span>
+└── README.md</code></pre>
+</div>
+    
+    <p>La regola d'oro: <strong><code>db/</code> per il modello dati, <code>srv/</code> per i servizi, <code>app/</code> per il frontend</strong>. CAP segue una convenzione "fortemente suggerita ma non obbligatoria": puoi mettere file <code>.cds</code> dove vuoi, ma se rispetti queste tre cartelle non devi configurare nulla — CAP li trova da solo.</p>
+    
+    <h3 id="convenzioni">Le convenzioni che contano</h3>
+    
+    <p>CAP è opinionated nel modo migliore: ti fa risparmiare configurazione se segui le sue convenzioni. Ecco le quattro più importanti:</p>
+    
+    <ol>
+      <li><strong>Namespace = path file</strong>. Un file in <code>db/bookshop/schema.cds</code> con <code>namespace bookshop;</code> diventa <code>bookshop.NomeEntity</code> nel mondo CDS.</li>
+      <li><strong>Auto-discovery</strong>. CAP scansiona <code>db/</code> e <code>srv/</code> all'avvio. Se il tuo file CDS è dentro queste cartelle, non devi importarlo manualmente.</li>
+      <li><strong>Entity plurali nei service</strong>. Un'entity <code>Book</code> diventa endpoint <code>/Books</code>. CAP pluralizza automaticamente (in inglese — per altre lingue puoi forzare con <code>@cds.entity.name</code>).</li>
+      <li><strong>OData V4 di default</strong>. Niente da configurare: appena definisci un service, è già esposto come OData V4 con tutte le sue capabilities ($filter, $expand, $count, ecc.).</li>
+    </ol>
+    
+    <h2 id="hello-world" data-num="01.4">Hello, <em>CDS</em></h2>
+    
+    <p>Apri <code>db/schema.cds</code> (se non esiste, crealo) e scrivi:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>db/schema.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">namespace</span> my.bookshop;
+
+<span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID    : <span class="type">Integer</span>;
+  title     : <span class="type">String</span>(<span class="num">100</span>);
+  stock     : <span class="type">Integer</span>;
+}}</code></pre>
+</div>
+    
+    <p>Poi <code>srv/cat-service.cds</code>:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>srv/cat-service.cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ my.bookshop <span class="kw">as</span> db }} <span class="kw">from</span> <span class="str">'../db/schema'</span>;
+
+<span class="kw">service</span> <span class="type">CatalogService</span> {{
+  <span class="kw">entity</span> <span class="type">Books</span> <span class="kw">as</span> <span class="kw">projection</span> <span class="kw">on</span> db.Books;
+}}</code></pre>
+</div>
+    
+    <p>Quattro righe per il modello, tre per il servizio. <strong>Questo è già un backend funzionante.</strong></p>
+    
+    <h3 id="cds-watch">Il magico <code>cds watch</code></h3>
+    
+    <p>Nella root del progetto, lancia:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>terminal</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>cds watch</code></pre>
+</div>
+    
+    <p>Vedrai output simile a:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>output</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>[cds] - loaded model from 2 file(s):
+
+  db/schema.cds
+  srv/cat-service.cds
+
+[cds] - connect to db &gt; sqlite { url: ':memory:' }
+[cds] - serving CatalogService { path: '/odata/v4/catalog' }
+
+[cds] - server listening on { url: 'http://localhost:4004' }
+[cds] - launched at 21/05/2026, 14:32:18, version: 8.x.x, in: 412ms
+[cds] - [ terminate with ^C ]</code></pre>
+</div>
+    
+    <p>Apri <code>http://localhost:4004</code> nel browser. Hai una pagina indice con i link al tuo service. Clicca su <code>/odata/v4/catalog</code> → vedi il <strong>service document</strong>. Aggiungi <code>/$metadata</code> all'URL → vedi i metadata OData generati automaticamente da CDS.</p>
+    
+    <div class="callout callout-tip">
+  <div class="callout-label">Hot reload</div>
+  <p><code>cds watch</code> ricarica automaticamente al salvataggio di qualsiasi file <code>.cds</code> o <code>.js</code>. Non devi mai riavviarlo. Quando aggiungi una entity nuova, in 2 secondi è già esposta.</p>
+</div>
+    
+    <h3 id="metadata">Leggere i metadata</h3>
+    
+    <p>Aprendo <code>http://localhost:4004/odata/v4/catalog/$metadata</code> vedi qualcosa di simile a:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>metadata XML</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="op">&lt;</span><span class="kw">EntityType</span> <span class="ann">Name</span>=<span class="str">"Books"</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="kw">Key</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="kw">PropertyRef</span> <span class="ann">Name</span>=<span class="str">"ID"</span>/<span class="op">&gt;</span>
+  <span class="op">&lt;/</span><span class="kw">Key</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="kw">Property</span> <span class="ann">Name</span>=<span class="str">"ID"</span> <span class="ann">Type</span>=<span class="str">"Edm.Int32"</span> <span class="ann">Nullable</span>=<span class="str">"false"</span>/<span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="kw">Property</span> <span class="ann">Name</span>=<span class="str">"title"</span> <span class="ann">Type</span>=<span class="str">"Edm.String"</span> <span class="ann">MaxLength</span>=<span class="str">"100"</span>/<span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="kw">Property</span> <span class="ann">Name</span>=<span class="str">"stock"</span> <span class="ann">Type</span>=<span class="str">"Edm.Int32"</span>/<span class="op">&gt;</span>
+<span class="op">&lt;/</span><span class="kw">EntityType</span><span class="op">&gt;</span></code></pre>
+</div>
+    
+    <p>Questa è la magia di CDS: tu hai scritto 4 righe di linguaggio dichiarativo, CAP ha generato schema HANA, endpoint OData, e questo contratto formale che qualsiasi client (UI5, React, Postman) può consumare.</p>
+    
+    <h2 id="mental-model" data-num="01.5">Il modello mentale giusto</h2>
+    
+    <p>Prima di tuffarsi in syntax e tipi, fissa nella tua testa questi tre principi. Ti risparmieranno mesi di confusione.</p>
+    
+    <p><strong>Primo: CDS è un linguaggio di <em>definizione</em>, non di <em>esecuzione</em>.</strong> Non scrivi "fai questo, poi quello". Scrivi "questo è fatto così". Il framework si occupa del come. Se ti trovi a chiederti "come faccio a far succedere X in CDS?", probabilmente la risposta è: non si fa in CDS, si fa in un handler JS. CDS descrive, non comanda.</p>
+    
+    <p><strong>Secondo: il modello CDS è la <em>fonte di verità</em>.</strong> Tutto deriva da lì: lo schema DB è generato dal modello, l'API OData è generata dal modello, la UI Fiori Elements (con le annotation) è generata dal modello. Se modifichi a mano il DB o l'API senza toccare il modello CDS, hai introdotto inconsistenza. Modifica sempre il <code>.cds</code> per primo.</p>
+    
+    <p><strong>Terzo: pensa per <em>strati</em>.</strong> Il modello in <code>db/</code> descrive la persistenza. I service in <code>srv/</code> sono <em>proiezioni</em> di quel modello, possibilmente filtrate e con permessi diversi. Lo stesso entity DB può apparire in due service diversi con shape diverso (uno completo per admin, uno ridotto per public). Questa stratificazione è il superpotere di CAP.</p>
+    
+    <div class="callout callout-warn">
+  <div class="callout-label">Errore tipico del principiante</div>
+  <p>Mettere logica di business dentro file CDS, o cercare di esporre direttamente le entity DB invece di farle passare attraverso una projection. Tieni sempre <code>db/</code> 'pulito' (solo struttura dati), e fai tutta l'esposizione e la logica in <code>srv/</code>.</p>
+</div>
+    
+    <h2 id="esercizio" data-num="01.6">Esercizio del capitolo</h2>
+    
+    <p>Prima di passare al Capitolo 2, fai questo esercizio. Dovrebbe prenderti 15-20 minuti:</p>
+    
+    <ol>
+      <li>Crea un progetto <code>cds init library-mvp</code></li>
+      <li>In <code>db/schema.cds</code>, definisci due entity: <code>Book</code> (ID, title, isbn, year) e <code>Author</code> (ID, firstName, lastName)</li>
+      <li>In <code>srv/library-service.cds</code>, esponi entrambe come projection</li>
+      <li>Lancia <code>cds watch</code> e verifica che gli endpoint OData siano attivi</li>
+      <li>Apri il file <code>$metadata</code> nel browser e confronta cosa CAP ha generato con quello che hai scritto</li>
+      <li>Bonus: usa <code>POST</code> da Postman o curl per creare un libro, poi <code>GET</code> per leggerlo</li>
+    </ol>
+    
+    <p>Se completi questo esercizio, hai compreso il ciclo base di CAP: <strong>scrivi CDS → CAP lo trasforma in DB + API in tempo reale</strong>. Da qui in poi, tutto il resto sono dettagli sopra questa fondamenta.</p>
+
+
+    <nav class="chapter-nav">
+  <span></span>
+  <a href="ch02-syntax.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">Sintassi, tipi, entity</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#perche-cds" >Perché CDS esiste</a></li>
+    <li><a href="#installare" >Installare l'ambiente</a></li>
+    <li><a href="#prerequisiti" style="padding-left: 1.5rem; font-size: 0.78rem;">Prerequisiti</a></li>
+    <li><a href="#comandi" style="padding-left: 1.5rem; font-size: 0.78rem;">I comandi essenziali</a></li>
+    <li><a href="#primo-progetto" >Il primo progetto</a></li>
+    <li><a href="#struttura" style="padding-left: 1.5rem; font-size: 0.78rem;">Struttura delle cartelle</a></li>
+    <li><a href="#convenzioni" style="padding-left: 1.5rem; font-size: 0.78rem;">Le convenzioni che contano</a></li>
+    <li><a href="#hello-world" >Hello, CDS</a></li>
+    <li><a href="#cds-watch" style="padding-left: 1.5rem; font-size: 0.78rem;">Il magico cds watch</a></li>
+    <li><a href="#metadata" style="padding-left: 1.5rem; font-size: 0.78rem;">Leggere i metadata</a></li>
+    <li><a href="#mental-model" >Il modello mentale giusto</a></li>
+    <li><a href="#esercizio" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

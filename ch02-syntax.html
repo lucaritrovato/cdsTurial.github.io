@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 02 · Sintassi, tipi, entity — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html" class="active"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 02</span>
+      <span>Sintassi, tipi, entity</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">02</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 02 · Sintassi, tipi, entity</div>
+        <h1 class="chapter-title">Sintassi, tipi, <em>entity</em></h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Il vocabolario di base del linguaggio CDS. Tipi primitivi, chiavi, constraints, default, tipi strutturati, enum. E soprattutto: come ogni costrutto CDS viene tradotto in DDL HANA reale al deploy.</p>
+    
+
+    <h2 id="anatomia-entity" data-num="02.1">Anatomia di un'<em>entity</em></h2>
+    
+    <p>Un'entity in CDS è la dichiarazione di una "tabella logica" — anche se vedremo che può finire come tabella reale, view, o nient'affatto sul DB. La sintassi minima è semplice:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>struttura base</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">NomeEntity</span> {{
+  <span class="kw">key</span> nomeChiave : <span class="type">Tipo</span>;
+  nomeCampo1      : <span class="type">Tipo</span>;
+  nomeCampo2      : <span class="type">Tipo</span> <span class="kw">not null</span>;
+  nomeCampo3      : <span class="type">Tipo</span> <span class="kw">default</span> <span class="str">'valore'</span>;
+}}</code></pre>
+</div>
+    
+    <p>Ogni dichiarazione di campo è una riga con tre parti: <strong>nome</strong>, due punti, <strong>tipo</strong>, e zero o più <strong>modificatori</strong> (key, not null, default, ecc.). Il punto e virgola finale è obbligatorio.</p>
+    
+    <div class="callout">
+  <div class="callout-label">Convenzioni di naming</div>
+  <p>Le entity in CAP si scrivono in <strong>PascalCase plurale</strong> (<code>Books</code>, <code>Orders</code>, <code>CustomerProfiles</code>). I campi in <strong>camelCase</strong> (<code>firstName</code>, <code>totalPrice</code>). Non è obbligatorio, ma se segui questa convenzione il tuo codice si integra naturalmente con tutto l'ecosistema SAP.</p>
+</div>
+    
+    <h2 id="tipi-primitivi" data-num="02.2">I tipi <em>primitivi</em></h2>
+    
+    <p>CDS definisce un set di tipi astratti che vengono poi mappati al tipo nativo del database target. Lo stesso modello CDS funziona su HANA, SQLite, PostgreSQL — il framework si occupa del mapping.</p>
+    
+    <h3 id="string-types">Stringhe</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">TextExamples</span> {{
+  shortText     : <span class="type">String</span>(<span class="num">50</span>);        <span class="cmt">// stringa con lunghezza max</span>
+  defaultString : <span class="type">String</span>;            <span class="cmt">// max 5000 char di default</span>
+  longText      : <span class="type">LargeString</span>;       <span class="cmt">// NCLOB su HANA, illimitato</span>
+  binaryData    : <span class="type">Binary</span>(<span class="num">200</span>);        <span class="cmt">// BLOB con max length</span>
+  bigBlob       : <span class="type">LargeBinary</span>;       <span class="cmt">// BLOB illimitato</span>
+}}</code></pre>
+</div>
+    
+    <p>Su HANA, <code>String(n)</code> diventa <code>NVARCHAR(n)</code> (Unicode-safe, raccomandato). <code>LargeString</code> diventa <code>NCLOB</code>. Se non specifichi la lunghezza, CAP usa 5000 come default — abbastanza per la maggior parte dei testi liberi, ma <strong>specifica sempre una lunghezza ragionevole</strong>: aiuta il DB a ottimizzare e ti costringe a pensare ai limiti.</p>
+    
+    <h3 id="numeric-types">Numeri</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">NumericExamples</span> {{
+  count        : <span class="type">Integer</span>;            <span class="cmt">// INT (32-bit)</span>
+  bigCount     : <span class="type">Integer64</span>;          <span class="cmt">// BIGINT (64-bit)</span>
+  microCount   : <span class="type">UInt8</span>;              <span class="cmt">// 0-255, ottimo per status flags</span>
+  smallCount   : <span class="type">Int16</span>;              <span class="cmt">// -32k a +32k</span>
+  
+  price        : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);         <span class="cmt">// 9 cifre totali, 2 decimali</span>
+  preciseValue : <span class="type">Decimal</span>(<span class="num">31</span>,<span class="num">10</span>);       <span class="cmt">// alta precisione</span>
+  ratio        : <span class="type">Decimal</span>;             <span class="cmt">// precision dinamica</span>
+  
+  ratingFloat  : <span class="type">Double</span>;             <span class="cmt">// IEEE 754 double</span>
+}}</code></pre>
+</div>
+    
+    <div class="callout callout-warn">
+  <div class="callout-label">Decimal vs Double</div>
+  <p><strong>Per soldi, quantità, percentuali, usa SEMPRE <code>Decimal</code>, mai <code>Double</code>.</strong> <code>Double</code> è floating point e introduce errori di arrotondamento. <code>Decimal(9,2)</code> garantisce precisione esatta: 9 cifre totali, di cui 2 dopo la virgola, quindi max 9999999.99.</p>
+</div>
+    
+    <h3 id="date-types">Date e tempo</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">DateExamples</span> {{
+  birthDate    : <span class="type">Date</span>;              <span class="cmt">// solo data: 2025-12-31</span>
+  startTime    : <span class="type">Time</span>;              <span class="cmt">// solo ora: 14:30:00</span>
+  createdAt    : <span class="type">DateTime</span>;          <span class="cmt">// data+ora, precisione al secondo</span>
+  modifiedAt   : <span class="type">Timestamp</span>;         <span class="cmt">// data+ora con frazioni di secondo, UTC</span>
+}}</code></pre>
+</div>
+    
+    <p><strong>La regola pratica:</strong> per timestamp di sistema (createdAt, modifiedAt) usa <code>Timestamp</code>. Per date di business (nascita, scadenza) usa <code>Date</code>. <code>DateTime</code> ha precisione al secondo e va bene per appuntamenti o eventi non ad alta frequenza.</p>
+    
+    <h3 id="special-types">Tipi speciali</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">SpecialExamples</span> {{
+  uuid         : <span class="type">UUID</span>;              <span class="cmt">// String(36) auto-generato</span>
+  isActive     : <span class="type">Boolean</span>;           <span class="cmt">// true/false</span>
+  rawValue     : <span class="type">Binary</span>(<span class="num">16</span>);         <span class="cmt">// byte array</span>
+}}</code></pre>
+</div>
+    
+    <p><code>UUID</code> è in realtà una <code>String(36)</code> con superpoteri: CAP la genera automaticamente come chiave primaria se la dichiari come <code>key ID : UUID;</code>. Su HANA diventa <code>NVARCHAR(36)</code>. È il tipo di chiave raccomandato per qualsiasi modello moderno: niente sequenze gestite dal DB, niente collisioni, distributable across systems.</p>
+    
+    <h2 id="keys" data-num="02.3">Chiavi <em>primarie</em></h2>
+    
+    <p>In CDS si dichiarano col modificatore <code>key</code> davanti al nome del campo:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID    : <span class="type">UUID</span>;          <span class="cmt">// chiave singola, raccomandato</span>
+  title     : <span class="type">String</span>;
+}}
+
+<span class="cmt">// Chiave composta:</span>
+<span class="kw">entity</span> <span class="type">BookCategories</span> {{
+  <span class="kw">key</span> book     : <span class="type">UUID</span>;
+  <span class="kw">key</span> category : <span class="type">String</span>(<span class="num">10</span>);
+  weight       : <span class="type">Decimal</span>(<span class="num">3</span>,<span class="num">2</span>);
+}}</code></pre>
+</div>
+    
+    <p>Tre regole sulle chiavi:</p>
+    
+    <ol>
+      <li><strong>Ogni entity persistita deve avere almeno una chiave.</strong> Se manchi, <code>cds compile</code> dà errore.</li>
+      <li><strong>Le chiavi sono implicitamente <code>not null</code>.</strong> Non serve scriverlo.</li>
+      <li><strong>UUID si auto-genera</strong> per <code>POST</code> via OData, sempre che la dichiari come <code>key ID : UUID;</code>. Se la chiave è di altro tipo (Integer, String), devi fornirla esplicitamente nel payload.</li>
+    </ol>
+    
+    <h2 id="constraints" data-num="02.4">Constraints e <em>default</em></h2>
+    
+    <h3 id="not-null">Not null e obbligatorietà</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span> <span class="kw">not null</span>;       <span class="cmt">// vincolo DB</span>
+  author : <span class="type">String</span> <span class="ann">@mandatory</span>;       <span class="cmt">// vincolo applicativo</span>
+  notes  : <span class="type">String</span>;                  <span class="cmt">// opzionale</span>
+}}</code></pre>
+</div>
+    
+    <p>Attenzione alla sfumatura: <strong><code>not null</code> e <code>@mandatory</code> non sono la stessa cosa.</strong></p>
+    
+    <ul>
+      <li><code>not null</code> è un vincolo a livello di database: se provi a salvare un record senza quel valore, il DB rifiuta con un errore SQL.</li>
+      <li><code>@mandatory</code> è un'annotation OData: il client OData/UI5 saprà che il campo è obbligatorio (mostra asterisco rosso, valida prima di inviare), ma se bypassi il client il DB accetta il null.</li>
+      <li>Spesso si usano insieme: <code>not null</code> per la sicurezza del dato, <code>@mandatory</code> per la UX.</li>
+    </ul>
+    
+    <h3 id="default-values">Valori di default</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Orders</span> {{
+  <span class="kw">key</span> ID    : <span class="type">UUID</span>;
+  status    : <span class="type">String</span>(<span class="num">10</span>) <span class="kw">default</span> <span class="str">'draft'</span>;
+  quantity  : <span class="type">Integer</span>    <span class="kw">default</span> <span class="num">1</span>;
+  isPaid    : <span class="type">Boolean</span>    <span class="kw">default</span> <span class="kw">false</span>;
+  createdAt : <span class="type">Timestamp</span>  <span class="kw">default</span> $now;
+  createdBy : <span class="type">String</span>     <span class="kw">default</span> $user;
+}}</code></pre>
+</div>
+    
+    <p>I default vengono applicati lato DB (per chi crea record bypassando l'API) e anche dal runtime CAP. <code>$now</code> e <code>$user</code> sono <em>magic variables</em>: vengono risolte dal framework rispettivamente come timestamp corrente e ID utente autenticato. Vedremo nel Capitolo 4 che esistono aspect predefiniti (<code>managed</code>) che gestiscono questi default in modo standard.</p>
+    
+    <h2 id="structured" data-num="02.5">Tipi <em>strutturati</em></h2>
+    
+    <p>Puoi raggruppare campi correlati in strutture annidate. Su HANA queste strutture diventano colonne con nome composto (<code>address_street</code>, <code>address_city</code>), ma nel modello e nell'API restano nested:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Customers</span> {{
+  <span class="kw">key</span> ID   : <span class="type">UUID</span>;
+  name     : <span class="type">String</span>;
+  
+  address : {{
+    street : <span class="type">String</span>;
+    city   : <span class="type">String</span>;
+    zip    : <span class="type">String</span>(<span class="num">10</span>);
+    country: <span class="type">String</span>(<span class="num">2</span>);
+  }};
+  
+  contacts : {{
+    email : <span class="type">String</span>;
+    phone : <span class="type">String</span>;
+  }};
+}}</code></pre>
+</div>
+    
+    <p>Vantaggi: la API OData espone <code>customer.address.city</code> come oggetto annidato (più pulito per il client), e nel DB le colonne sono raggruppate logicamente. Svantaggio: non puoi indicizzare individualmente sotto-campi in tutti i casi. Usali per dati coesi (indirizzi, contatti, money), non come gerarchia profonda.</p>
+    
+    <h2 id="type-aliases" data-num="02.6">Type <em>aliases</em></h2>
+    
+    <p>Riutilizza definizioni di tipo per consistenza:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">type</span> <span class="type">Currency</span>     : <span class="type">String</span>(<span class="num">3</span>);
+<span class="kw">type</span> <span class="type">EmailAddress</span> : <span class="type">String</span>(<span class="num">255</span>);
+<span class="kw">type</span> <span class="type">Money</span>        : <span class="type">Decimal</span>(<span class="num">15</span>,<span class="num">2</span>);
+
+<span class="kw">entity</span> <span class="type">Invoices</span> {{
+  <span class="kw">key</span> ID  : <span class="type">UUID</span>;
+  amount  : <span class="type">Money</span>;
+  currency: <span class="type">Currency</span>;
+  contact : <span class="type">EmailAddress</span>;
+}}</code></pre>
+</div>
+    
+    <p>Pattern d'oro: definisci i type alias in un file <code>db/common.cds</code> e fai <code>using</code> in tutto il progetto. Quando un giorno dovrai cambiare <code>Money</code> da <code>Decimal(15,2)</code> a <code>Decimal(19,4)</code>, lo cambi in un posto solo.</p>
+    
+    <h2 id="enums" data-num="02.7">Enumerazioni</h2>
+    
+    <p>CDS supporta enum inline o come tipo separato:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Enum inline</span>
+<span class="kw">entity</span> <span class="type">Orders</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  status : <span class="type">String</span> <span class="kw">enum</span> {{
+    draft;
+    submitted;
+    approved;
+    rejected;
+    shipped;
+  }};
+}}
+
+<span class="cmt">// Enum come type riusabile</span>
+<span class="kw">type</span> <span class="type">Priority</span> : <span class="type">Integer</span> <span class="kw">enum</span> {{
+  low    = <span class="num">1</span>;
+  medium = <span class="num">2</span>;
+  high   = <span class="num">3</span>;
+}}
+
+<span class="kw">entity</span> <span class="type">Tickets</span> {{
+  <span class="kw">key</span> ID  : <span class="type">UUID</span>;
+  priority : <span class="type">Priority</span>;
+}}</code></pre>
+</div>
+    
+    <p>Gli enum diventano vincoli CHECK su HANA, e nei metadata OData diventano <code>EnumType</code> che il client può usare per popolare dropdown automaticamente. In più, l'estensione CDS di VS Code ti dà autocompletamento sui valori.</p>
+    
+    <h2 id="mapping-hana" data-num="02.8">Mapping verso <em>HANA</em></h2>
+    
+    <p>Ecco la tabella di conversione tipi CDS → HANA. Imparala a memoria, ti tornerà utile quando dovrai integrarti con tabelle HANA esistenti o leggere errori SQL:</p>
+    
+    <table>
+      <thead>
+        <tr><th>CDS</th><th>HANA SQL</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>UUID</code></td><td><code>NVARCHAR(36)</code></td><td>Stringa, non binary</td></tr>
+        <tr><td><code>Boolean</code></td><td><code>BOOLEAN</code></td><td></td></tr>
+        <tr><td><code>UInt8</code></td><td><code>TINYINT</code></td><td>0-255</td></tr>
+        <tr><td><code>Int16</code></td><td><code>SMALLINT</code></td><td></td></tr>
+        <tr><td><code>Integer</code></td><td><code>INTEGER</code></td><td>32-bit</td></tr>
+        <tr><td><code>Integer64</code></td><td><code>BIGINT</code></td><td>64-bit</td></tr>
+        <tr><td><code>Decimal(p,s)</code></td><td><code>DECIMAL(p,s)</code></td><td>Esatto</td></tr>
+        <tr><td><code>Double</code></td><td><code>DOUBLE</code></td><td>IEEE 754</td></tr>
+        <tr><td><code>Date</code></td><td><code>DATE</code></td><td></td></tr>
+        <tr><td><code>Time</code></td><td><code>TIME</code></td><td></td></tr>
+        <tr><td><code>DateTime</code></td><td><code>SECONDDATE</code></td><td>Precisione al secondo</td></tr>
+        <tr><td><code>Timestamp</code></td><td><code>TIMESTAMP</code></td><td>Frazioni di secondo, UTC</td></tr>
+        <tr><td><code>String(n)</code></td><td><code>NVARCHAR(n)</code></td><td>Unicode</td></tr>
+        <tr><td><code>LargeString</code></td><td><code>NCLOB</code></td><td></td></tr>
+        <tr><td><code>Binary(n)</code></td><td><code>VARBINARY(n)</code></td><td></td></tr>
+        <tr><td><code>LargeBinary</code></td><td><code>BLOB</code></td><td></td></tr>
+      </tbody>
+    </table>
+    
+    <h2 id="esercizio" data-num="02.9">Esercizio del capitolo</h2>
+    
+    <p>Modella un'entity <code>Employee</code> che includa:</p>
+    
+    <ul>
+      <li>Chiave UUID</li>
+      <li>Nome e cognome (max 50 char ciascuno, obbligatori a livello DB)</li>
+      <li>Email obbligatoria solo lato applicativo (usa <code>@mandatory</code>)</li>
+      <li>Stipendio con precisione monetaria (usa un type alias <code>Money</code>)</li>
+      <li>Data di assunzione (default = oggi)</li>
+      <li>Ruolo come enum (junior, mid, senior, lead)</li>
+      <li>Indirizzo come struttura annidata (via, città, CAP, paese)</li>
+      <li>Flag <code>isActive</code> con default <code>true</code></li>
+      <li>Timestamp di creazione (default <code>$now</code>)</li>
+    </ul>
+    
+    <p>Lancia <code>cds watch</code>, apri <code>$metadata</code> e verifica che tutto sia mappato correttamente in OData. Poi, prova ad eseguire <code>cds compile db/schema.cds --to sql</code> per vedere lo schema HANA SQL generato.</p>
+
+
+    <nav class="chapter-nav">
+  <a href="ch01-foundations.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">Anatomia di un progetto</span>
+  </a>
+  <a href="ch03-associations.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">Associations & Compositions</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#anatomia-entity" >Anatomia di un'entity</a></li>
+    <li><a href="#tipi-primitivi" >I tipi primitivi</a></li>
+    <li><a href="#string-types" style="padding-left: 1.5rem; font-size: 0.78rem;">Stringhe</a></li>
+    <li><a href="#numeric-types" style="padding-left: 1.5rem; font-size: 0.78rem;">Numeri</a></li>
+    <li><a href="#date-types" style="padding-left: 1.5rem; font-size: 0.78rem;">Date e tempo</a></li>
+    <li><a href="#special-types" style="padding-left: 1.5rem; font-size: 0.78rem;">Tipi speciali</a></li>
+    <li><a href="#keys" >Chiavi primarie</a></li>
+    <li><a href="#constraints" >Constraints e default</a></li>
+    <li><a href="#not-null" style="padding-left: 1.5rem; font-size: 0.78rem;">Not null e obbligatorietà</a></li>
+    <li><a href="#default-values" style="padding-left: 1.5rem; font-size: 0.78rem;">Valori di default</a></li>
+    <li><a href="#structured" >Tipi strutturati</a></li>
+    <li><a href="#type-aliases" >Type aliases</a></li>
+    <li><a href="#enums" >Enumerazioni</a></li>
+    <li><a href="#mapping-hana" >Mapping verso HANA</a></li>
+    <li><a href="#esercizio" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

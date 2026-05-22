@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cap. 04 · Aspects, mixins, riusabilità — CDS Mastery</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="brand">
+      <span class="brand-mark">CDS Mastery</span>
+      <span class="brand-sub">Vol. I · 2026</span>
+    </a>
+    <ul class="nav-pages">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="ch01-foundations.html" class="active">Capitoli</a></li>
+      <li><a href="ch10-expert.html">Expert</a></li>
+      <li><a href="reference.html">Reference</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main class="layout">
+
+  <aside class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Capitoli</div>
+    <ul>
+      <li><a href="ch01-foundations.html"><span class="sidebar-num">01</span> Anatomia di un progetto</a></li>
+      <li><a href="ch02-syntax.html"><span class="sidebar-num">02</span> Sintassi, tipi, entity</a></li>
+      <li><a href="ch03-associations.html"><span class="sidebar-num">03</span> Associations & Compositions</a></li>
+      <li><a href="ch04-aspects.html" class="active"><span class="sidebar-num">04</span> Aspects, mixins, riusabilità</a></li>
+      <li><a href="ch05-views.html"><span class="sidebar-num">05</span> Views, projections, calculated</a></li>
+      <li><a href="ch06-services.html"><span class="sidebar-num">06</span> Services, actions, functions</a></li>
+      <li><a href="ch07-annotations.html"><span class="sidebar-num">07</span> Annotations</a></li>
+      <li><a href="ch08-cql.html"><span class="sidebar-num">08</span> CQL & CQN</a></li>
+      <li><a href="ch09-hana.html"><span class="sidebar-num">09</span> Deploy & HANA nativo</a></li>
+      <li><a href="ch10-expert.html"><span class="sidebar-num">10</span> Draft, multitenancy, extensibility</a></li>
+    </ul>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Risorse</div>
+    <ul>
+      <li><a href="reference.html"><span class="sidebar-num">R</span> Reference</a></li>
+      <li><a href="index.html"><span class="sidebar-num">←</span> Home</a></li>
+    </ul>
+  </div>
+</aside>
+
+  <article class="content">
+    <div class="crumbs">
+      <span>CDS Mastery</span>
+      <span>Capitolo 04</span>
+      <span>Aspects, mixins, riusabilità</span>
+    </div>
+    
+    <header class="chapter-meta">
+      <div class="chapter-num">04</div>
+      <div class="chapter-info">
+        <div class="chapter-kicker">Capitolo 04 · Aspects, mixins, riusabilità</div>
+        <h1 class="chapter-title">Aspects, mixins, <em>riusabilità</em></h1>
+      </div>
+    </header>
+    
+    <p class="chapter-lead">Smettere di ripetere codice nel modello dati. Aspects predefiniti, pattern custom, localized, aspect bibliotecari standard SAP. Il modo idiomatico CAP di scrivere modelli DRY.</p>
+    
+
+    <h2 id="cosa-sono" data-num="04.1">Cosa sono gli <em>aspect</em></h2>
+    
+    <p>Un <strong>aspect</strong> in CDS è un blocco riusabile di definizioni — campi, association, annotation — che puoi mescolare in più entity senza ripetere codice. Pensa agli aspect come ai <em>mixin</em> o <em>traits</em> di altri linguaggi.</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Definisci una volta</span>
+<span class="kw">aspect</span> <span class="type">Auditable</span> {{
+  createdAt  : <span class="type">Timestamp</span> <span class="kw">default</span> $now;
+  createdBy  : <span class="type">String</span>    <span class="kw">default</span> $user;
+  modifiedAt : <span class="type">Timestamp</span>;
+  modifiedBy : <span class="type">String</span>;
+}}
+
+<span class="cmt">// Usa ovunque</span>
+<span class="kw">entity</span> <span class="type">Books</span> : <span class="type">Auditable</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>;
+}}
+
+<span class="kw">entity</span> <span class="type">Authors</span> : <span class="type">Auditable</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  name   : <span class="type">String</span>;
+}}</code></pre>
+</div>
+    
+    <p>Entrambe le entity ora hanno i quattro campi audit, definiti in un posto solo. Se domani vuoi cambiarli (aggiungere <code>deletedAt</code>, per esempio), tocchi un solo file.</p>
+    
+    <div class="callout">
+  <div class="callout-label">Sintassi della composizione</div>
+  <p><code>entity Books : Auditable { ... }</code> usa i due punti per estendere con un aspect. Puoi metterne più di uno: <code>entity Books : Auditable, Tagged, Reviewable { ... }</code>.</p>
+</div>
+    
+    <h2 id="predefiniti" data-num="04.2">Aspect <em>predefiniti</em></h2>
+    
+    <p>CAP fornisce out-of-the-box un set di aspect comuni in <code>@sap/cds/common</code>. Vediamoli uno per uno — risparmiano centinaia di righe di codice nel progetto medio.</p>
+    
+    <h3 id="cuid">cuid: chiave UUID standard</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ cuid }} <span class="kw">from</span> <span class="str">'@sap/cds/common'</span>;
+
+<span class="kw">entity</span> <span class="type">Books</span> : <span class="type">cuid</span> {{
+  title : <span class="type">String</span>;
+}}
+
+<span class="cmt">// Equivalente a:</span>
+<span class="kw">entity</span> <span class="type">Books</span> {{
+  <span class="kw">key</span> ID : <span class="type">UUID</span>;
+  title  : <span class="type">String</span>;
+}}</code></pre>
+</div>
+    
+    <p>Sembra banale — risparmi una riga. Ma quando hai 50 entity, sono 50 righe di chiavi tutte uguali sostituite da un singolo aspect riconoscibile a colpo d'occhio. E se domani decidi di usare un tipo diverso per le chiavi, lo fai in un punto solo (estendendo <code>cuid</code>).</p>
+    
+    <h3 id="managed">managed: audit trail automatico</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ managed }} <span class="kw">from</span> <span class="str">'@sap/cds/common'</span>;
+
+<span class="kw">entity</span> <span class="type">Books</span> : <span class="type">cuid</span>, <span class="type">managed</span> {{
+  title : <span class="type">String</span>;
+}}</code></pre>
+</div>
+    
+    <p>L'aspect <code>managed</code> aggiunge quattro campi: <code>createdAt</code>, <code>createdBy</code>, <code>modifiedAt</code>, <code>modifiedBy</code>. Ma fa molto di più — CAP <strong>gestisce automaticamente</strong> questi campi a runtime:</p>
+    
+    <ul>
+      <li>Su INSERT: imposta createdAt + createdBy</li>
+      <li>Su UPDATE: imposta modifiedAt + modifiedBy</li>
+      <li>I campi sono read-only nell'API: il client non può sovrascriverli</li>
+    </ul>
+    
+    <p>Questa è la potenza degli aspect in CAP: non sono solo "shortcut sintattici", portano comportamento runtime.</p>
+    
+    <h3 id="temporal">temporal: versionamento storico</h3>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ temporal }} <span class="kw">from</span> <span class="str">'@sap/cds/common'</span>;
+
+<span class="kw">entity</span> <span class="type">Prices</span> : <span class="type">temporal</span> {{
+  <span class="kw">key</span> product : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Products</span>;
+  amount      : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">2</span>);
+}}</code></pre>
+</div>
+    
+    <p><code>temporal</code> aggiunge <code>validFrom</code> e <code>validTo</code> alle chiavi, trasformando l'entity in una "time series". Il client può fare query "as-of":</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>OData time queries</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code>GET /Prices?$at=2025-06-15T00:00:00Z
+<span class="cmt"># Restituisce solo i prezzi validi a quella data</span>
+
+GET /Prices?$from=2025-01-01&amp;$to=2025-12-31
+<span class="cmt"># Restituisce tutti i prezzi attivi in quel range</span></code></pre>
+</div>
+    
+    <p>Versionamento storico automatico, senza scrivere logica.</p>
+    
+    <h2 id="localized" data-num="04.3"><em>Localized</em>: multilingua zero-effort</h2>
+    
+    <p>Non è un aspect ma un modificatore di tipo. Lo metto qui perché è uno dei trucchi più potenti di CDS:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Products</span> : <span class="type">cuid</span>, <span class="type">managed</span> {{
+  title       : <span class="type">localized</span> <span class="type">String</span>;
+  description : <span class="type">localized</span> <span class="type">LargeString</span>;
+  category    : <span class="type">String</span>;  <span class="cmt">// non localizzato</span>
+}}</code></pre>
+</div>
+    
+    <p>Cosa genera CAP a partire da questo? <strong>Tre artefatti</strong>:</p>
+    
+    <ol>
+      <li>Tabella <code>Products</code> con le colonne in lingua "di base"</li>
+      <li>Tabella <code>Products_texts</code> con (locale, ID, title, description)</li>
+      <li>View <code>localized.Products</code> che fa una join automatica in base alla lingua del request</li>
+    </ol>
+    
+    <p>Il client OData vede semplicemente <code>title</code> e <code>description</code> nella lingua giusta — CAP ispeziona il header <code>Accept-Language</code> o il parametro <code>sap-language</code> e fa la join corretta. Per modificare le traduzioni, l'entity <code>Products.texts</code> è automaticamente esposta come associazione.</p>
+    
+    <div class="callout callout-tip">
+  <div class="callout-label">Best practice</div>
+  <p>Usa <code>localized</code> per qualsiasi testo visibile all'utente finale: titoli, descrizioni, label, messaggi. Non per dati interni (codici, status, ID esterni). Decidere bene fin dall'inizio risparmia migrazioni dolorose dopo.</p>
+</div>
+    
+    <h2 id="code-list" data-num="04.4">CodeList, Countries, Currencies, Languages</h2>
+    
+    <p>Sono pattern standard per i codici di "lookup table" — sigle paese, valute, lingue, ecc. CAP fornisce:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ 
+  sap.common.Countries, 
+  sap.common.Currencies, 
+  sap.common.Languages 
+}} <span class="kw">from</span> <span class="str">'@sap/cds/common'</span>;
+
+<span class="kw">entity</span> <span class="type">Customers</span> : <span class="type">cuid</span> {{
+  name     : <span class="type">String</span>;
+  country  : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Countries</span>;
+  currency : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Currencies</span>;
+}}</code></pre>
+</div>
+    
+    <p>Queste tre entity sono già modellate, già localizzate (i nomi paese in più lingue!), e all'attivazione del progetto CAP le popola con tutti i codici ISO standard. <strong>Mai più lookup table custom per cose standard.</strong></p>
+    
+    <p>Tutte estendono il pattern <code>CodeList</code>, che puoi usare per i tuoi codici custom:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">using</span> {{ sap.common.CodeList }} <span class="kw">from</span> <span class="str">'@sap/cds/common'</span>;
+
+<span class="kw">entity</span> <span class="type">OrderStatuses</span> : <span class="type">CodeList</span> {{
+  <span class="kw">key</span> code : <span class="type">String</span>(<span class="num">10</span>);
+  <span class="cmt">// Aggiunge automaticamente: name (localized) e descr (localized)</span>
+}}</code></pre>
+</div>
+    
+    <h2 id="custom" data-num="04.5">Aspect <em>custom</em></h2>
+    
+    <p>Crei i tuoi aspect quando vedi pattern ripetuti nel tuo modello. Esempi reali da progetti di produzione:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Soft delete pattern</span>
+<span class="kw">aspect</span> <span class="type">SoftDeletable</span> {{
+  isDeleted : <span class="type">Boolean</span> <span class="kw">default</span> <span class="kw">false</span>;
+  deletedAt : <span class="type">Timestamp</span>;
+  deletedBy : <span class="type">String</span>;
+}}
+
+<span class="cmt">// Money pattern (importo + valuta)</span>
+<span class="kw">aspect</span> <span class="type">Priced</span> {{
+  amount   : <span class="type">Decimal</span>(<span class="num">15</span>,<span class="num">2</span>);
+  currency : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Currencies</span>;
+}}
+
+<span class="cmt">// Geo pattern</span>
+<span class="kw">aspect</span> <span class="type">Located</span> {{
+  latitude  : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">6</span>);
+  longitude : <span class="type">Decimal</span>(<span class="num">9</span>,<span class="num">6</span>);
+}}
+
+<span class="cmt">// Approval workflow</span>
+<span class="kw">aspect</span> <span class="type">Approvable</span> {{
+  status     : <span class="type">String</span>(<span class="num">10</span>) <span class="kw">default</span> <span class="str">'draft'</span>;
+  approvedAt : <span class="type">Timestamp</span>;
+  approvedBy : <span class="type">String</span>;
+  rejectReason : <span class="type">String</span>(<span class="num">500</span>);
+}}</code></pre>
+</div>
+    
+    <p>Convenzione: gli aspect custom in un file <code>db/aspects.cds</code> o <code>db/common.cds</code>, importati ovunque servano.</p>
+    
+    <h2 id="composizione" data-num="04.6">Composizione <em>multipla</em></h2>
+    
+    <p>Un'entity può ereditare da più aspect contemporaneamente. È questo che rende il sistema espressivo:</p>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="kw">entity</span> <span class="type">Invoices</span> : 
+    <span class="type">cuid</span>, <span class="type">managed</span>, <span class="type">Priced</span>, <span class="type">Approvable</span> {{
+  customer : <span class="type">Association</span> <span class="kw">to</span> <span class="type">Customers</span>;
+  dueDate  : <span class="type">Date</span>;
+  items    : <span class="type">Composition</span> <span class="kw">of many</span> <span class="type">InvoiceItems</span> 
+               <span class="kw">on</span> items.invoice = $self;
+}}</code></pre>
+</div>
+    
+    <p>Questa entity ha:</p>
+    
+    <ul>
+      <li>Da <code>cuid</code>: chiave ID UUID</li>
+      <li>Da <code>managed</code>: createdAt, createdBy, modifiedAt, modifiedBy</li>
+      <li>Da <code>Priced</code>: amount, currency</li>
+      <li>Da <code>Approvable</code>: status, approvedAt, approvedBy, rejectReason</li>
+      <li>Specifico: customer, dueDate, items</li>
+    </ul>
+    
+    <p>Sedici campi in totale, ma il file CDS è cortissimo e si legge come una specifica di business: "una Invoice è qualcosa di identificabile, tracciato, con prezzo e approvabile".</p>
+    
+    <h2 id="extend-annotate" data-num="04.7"><code>extend</code> vs <code>annotate</code></h2>
+    
+    <p>Due verbi che si confondono spesso. Servono entrambi a "modificare" cose già definite altrove, ma in modi diversi:</p>
+    
+    <ul>
+      <li><strong><code>extend</code></strong>: aggiunge nuovi campi/elementi a un'entity esistente</li>
+      <li><strong><code>annotate</code></strong>: aggiunge/modifica annotation, senza toccare la struttura</li>
+    </ul>
+    
+    <div class="code-block">
+  <div class="code-header">
+    <div class="code-lang">
+      <span class="code-dots"><span class="code-dot"></span><span class="code-dot"></span><span class="code-dot"></span></span>
+      <span>cds</span>
+    </div>
+    <button class="code-copy">Copia</button>
+  </div>
+  <pre><code><span class="cmt">// Estendi un'entity esterna aggiungendo campi</span>
+<span class="kw">extend</span> <span class="type">Books</span> <span class="kw">with</span> {{
+  rating : <span class="type">Decimal</span>(<span class="num">3</span>,<span class="num">2</span>);
+  tags   : <span class="kw">array of</span> <span class="type">String</span>;
+}}
+
+<span class="cmt">// Aggiungi annotation a un'entity esistente</span>
+<span class="kw">annotate</span> <span class="type">Books</span> <span class="kw">with</span> @(
+  <span class="ann">UI.LineItem</span>: [
+    {{ Value: title }},
+    {{ Value: author.name }}
+  ]
+);
+
+<span class="cmt">// Annota un singolo campo</span>
+<span class="kw">annotate</span> <span class="type">Books</span>:title <span class="kw">with</span> @<span class="ann">Common.Label</span>: <span class="str">'Titolo'</span>;</code></pre>
+</div>
+    
+    <p><strong>Pattern fortemente raccomandato</strong>: tieni le annotation UI in file separati (es. <code>app/books-ui.cds</code>), non mescolate al modello dati. Ti semplifica la vita e separa nettamente le responsabilità.</p>
+    
+    <h2 id="esercizio" data-num="04.8">Esercizio del capitolo</h2>
+    
+    <p>Refactora il modello del Capitolo 3 (Conference Management) usando aspect:</p>
+    
+    <ol>
+      <li>Aggiungi <code>cuid</code> e <code>managed</code> ovunque sensato</li>
+      <li>Definisci un aspect custom <code>Schedulable</code> con <code>startDate</code>, <code>endDate</code>, <code>duration</code></li>
+      <li>Applica <code>Schedulable</code> a Conferences e Sessions</li>
+      <li>Rendi <code>localized</code> i campi di testo visibili agli attendees</li>
+      <li>Sostituisci eventuali colonne paese/lingua con <code>Association to Countries/Languages</code></li>
+      <li>Verifica con <code>cds compile --to sql</code> che lo schema generato sia compatto e pulito</li>
+    </ol>
+
+
+    <nav class="chapter-nav">
+  <a href="ch03-associations.html" class="prev">
+    <span class="chapter-nav-dir">← Capitolo precedente</span>
+    <span class="chapter-nav-title">Associations & Compositions</span>
+  </a>
+  <a href="ch05-views.html" class="next">
+    <span class="chapter-nav-dir">Capitolo successivo →</span>
+    <span class="chapter-nav-title">Views, projections, calculated</span>
+  </a>
+</nav>
+  </article>
+
+  <aside class="toc">
+  <div class="toc-label">In questo capitolo</div>
+  <ul>
+    <li><a href="#cosa-sono" >Cosa sono gli aspect</a></li>
+    <li><a href="#predefiniti" >Aspect predefiniti</a></li>
+    <li><a href="#cuid" style="padding-left: 1.5rem; font-size: 0.78rem;">cuid</a></li>
+    <li><a href="#managed" style="padding-left: 1.5rem; font-size: 0.78rem;">managed</a></li>
+    <li><a href="#temporal" style="padding-left: 1.5rem; font-size: 0.78rem;">temporal</a></li>
+    <li><a href="#localized" >localized</a></li>
+    <li><a href="#code-list" >CodeList & Country</a></li>
+    <li><a href="#custom" >Aspect custom</a></li>
+    <li><a href="#composizione" >Composizione multipla</a></li>
+    <li><a href="#extend-annotate" >Extend vs Annotate</a></li>
+    <li><a href="#esercizio" >Esercizio del capitolo</a></li>
+  </ul>
+</aside>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">CDS Mastery</div>
+      <p class="footer-tagline">Un tutorial editoriale costruito come una rivista di settore. Esempi reali, niente fluff.</p>
+    </div>
+    <div class="footer-section">
+      <h5>Capitoli</h5>
+      <ul>
+        <li><a href="ch01-foundations.html">01 · Fondamenta</a></li>
+        <li><a href="ch02-syntax.html">02 · Sintassi</a></li>
+        <li><a href="ch03-associations.html">03 · Associations</a></li>
+        <li><a href="ch04-aspects.html">04 · Aspects</a></li>
+        <li><a href="ch05-views.html">05 · Views</a></li>
+      </ul>
+    </div>
+    <div class="footer-section">
+      <h5>Avanzato</h5>
+      <ul>
+        <li><a href="ch06-services.html">06 · Services</a></li>
+        <li><a href="ch07-annotations.html">07 · Annotations</a></li>
+        <li><a href="ch08-cql.html">08 · CQL</a></li>
+        <li><a href="ch09-hana.html">09 · HANA</a></li>
+        <li><a href="ch10-expert.html">10 · Expert</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>CDS Mastery · Vol. I · 2026</span>
+    <span>Made with care — for CAP developers</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
